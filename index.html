@@ -23,12 +23,8 @@
         .cases-line { display: flex; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); padding-left: 50%; }
         
         .item { min-width: 100px; height: 100px; margin: 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; align-items: center; justify-content: center; position: relative; }
-        .item img { width: 80px; height: auto; }
+        .item img { width: 80px; height: auto; object-fit: contain; }
         .item.empty { border-color: var(--gray); opacity: 0.3; }
-        .item.blue { border-color: var(--blue); }
-        .item.purple { border-color: var(--purple); }
-        .item.pink { border-color: var(--pink); }
-        .item.red { border-color: var(--red); }
         .item.gold { border-color: var(--gold); }
 
         .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; }
@@ -37,9 +33,10 @@
 
         .profile-section { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
         .inv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-        input { background: #000; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; width: calc(100% - 22px); margin: 5px 0; }
+        input { background: #111; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; width: calc(100% - 22px); margin: 5px 0; }
 
-        .swap-box { background: #1a1a1a; padding: 20px; border-radius: 15px; text-align: center; display: flex; align-items: center; justify-content: space-around; margin-bottom: 15px; }
+        .swap-box { background: #1a1a1a; padding: 20px; border-radius: 15px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; }
+        .swap-input-container { background: #222; padding: 10px; border-radius: 10px; display: flex; align-items: center; gap: 8px; border: 1px solid #333; }
 
         .nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #151515; border-top: 1px solid #333; display: flex; z-index: 50; }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; }
@@ -50,12 +47,12 @@
 
     <div class="header">
         <div>NotCase 💎</div>
-        <div class="balance" id="balanceDisplay">100 NC</div>
+        <div class="balance" id="balanceDisplay">0 NC</div>
     </div>
 
     <div id="caseModal" class="case-modal">
         <div class="close-modal" onclick="closeCase()">×</div>
-        <h2 id="modalTitle" style="text-align:center">Название Кейса</h2>
+        <h2 id="modalTitle" style="text-align:center">Кейс</h2>
         <div class="roulette-wrapper"><div class="pointer"></div><div id="line" class="cases-line"></div></div>
         <button class="btn-main" id="modalSpinBtn">ОТКРЫТЬ КЕЙС</button>
         <p id="modalPrice" style="text-align:center; color:gold; margin-top:10px"></p>
@@ -64,7 +61,6 @@
     <div id="page-cases" class="page active">
         <div class="case-card" onclick="openCase('poor')">
             <h3>📦 Бомж-Кейс</h3>
-            <div style="color: #666; font-size: 11px;">Шанс на Deagle: 0.0001%</div>
             <div style="margin-bottom:10px; color:gold">10 NC</div>
             <button class="btn-main">ВЫБРАТЬ</button>
         </div>
@@ -82,13 +78,18 @@
 
     <div id="page-profile" class="page">
         <div class="profile-section">
-            <div style="font-size:20px" id="userTitle">👤 Advantur</div>
-            <div style="font-size:12px; color:gray" id="userIdDisplay">ID: 8297728079</div>
+            <div style="font-size:18px" id="userTitle">👤 Пользователь</div>
+            <div style="font-size:12px; color:gray" id="userIdDisplay">ID: ---</div>
+        </div>
+        <div class="profile-section">
+            <label>Промокод:</label>
+            <input type="text" id="promoInput" placeholder="Введите код...">
+            <button class="btn-main" style="margin-top:10px" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
         </div>
         <div class="profile-section">
             <label>Реф-ссылка:</label>
             <input type="text" id="refLink" readonly>
-            <button class="btn-main" style="background:#444; color:white" onclick="copyRef()">КОПИРОВАТЬ</button>
+            <button class="btn-main" style="background:#333; color:white; margin-top:5px" onclick="copyRef()">КОПИРОВАТЬ</button>
         </div>
         <div id="inventoryGrid" class="inv-grid"></div>
     </div>
@@ -96,23 +97,29 @@
     <div id="page-shop" class="page">
         <h3 style="text-align:center">СУММА ПОПОЛНЕНИЯ</h3>
         <div class="swap-box">
-            <div>⭐️ <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:50px"></div>
-            <div>➔</div>
-            <div>💎 <span id="ncOut">1000</span></div>
+            <div class="swap-input-container">
+                <span style="color:#ffca28">⭐</span>
+                <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:50px; background:transparent; border:none; margin:0; padding:0; text-align:center; font-weight:bold; font-size:16px">
+            </div>
+            <div style="font-size:20px">➔</div>
+            <div class="swap-input-container">
+                <span style="color:#4b69ff">💎</span>
+                <span id="ncOut" style="font-weight:bold; font-size:16px; min-width:50px">1000</span>
+            </div>
         </div>
         <div style="display:flex; gap:10px; margin-bottom:20px">
-            <button class="btn-star" onclick="setStars(10)">⭐️ 10</button>
-            <button class="btn-star" onclick="setStars(25)">⭐️ 25</button>
-            <button class="btn-star" onclick="setStars(50)">⭐️ 50</button>
-            <button class="btn-star" onclick="setStars(100)">⭐️ 100</button>
+            <button class="btn-star" onclick="setStars(10)">⭐ 10</button>
+            <button class="btn-star" onclick="setStars(25)">⭐ 25</button>
+            <button class="btn-star" onclick="setStars(50)">⭐ 50</button>
+            <button class="btn-star" onclick="setStars(100)">⭐ 100</button>
         </div>
-        <button class="btn-main" style="background:#ff8000; color:white; font-size:18px" onclick="topUp()">ПОПОЛНИТЬ БАЛАНС ⭐️ <span id="starVal">10</span></button>
+        <button class="btn-main" style="background:#ff8000; color:white; font-size:18px" onclick="topUp()">ПОПОЛНИТЬ БАЛАНС ⭐ <span id="starVal">10</span></button>
     </div>
 
     <nav class="nav">
         <div class="nav-item active" onclick="nav('cases')">📦<br>Кейсы</div>
         <div class="nav-item" onclick="nav('profile')">👤<br>Профиль</div>
-        <div class="nav-item" onclick="nav('shop')">⭐️<br>Магазин</div>
+        <div class="nav-item" onclick="nav('shop')">⭐<br>Магазин</div>
     </nav>
 
     <script>
@@ -121,27 +128,22 @@
 
         let balance = parseInt(localStorage.getItem('nc_balance')) || 100;
         let inventory = JSON.parse(localStorage.getItem('nc_inv')) || [];
+        let usedPromos = JSON.parse(localStorage.getItem('nc_promos')) || [];
 
         const skins = {
             empty: { name: "Пусто", color: "empty", img: "https://www.freeiconspng.com/thumbs/cross-icon/red-cross-icon-10.png" },
             deagle: { name: "Deagle | Night", color: "purple", img: "deagle.png" },
-            sg: { name: "SG 553", color: "blue", img: "sg.png" },
-            ssg: { name: "SSG 08", color: "blue", img: "ssg.png" },
-            mp5: { name: "MP5-SD", color: "purple", img: "mp5.png" },
-            mac10: { name: "MAC-10", color: "purple", img: "mac10.png" },
-            sawed: { name: "Sawed-Off", color: "pink", img: "sawed.png" },
             ak: { name: "AK-47 | Redline", color: "red", img: "ak.png" },
-            // ТВОИ НОЖИ
-            knife1: { name: "Bowie | Чистая сталь", color: "gold", img: "1knife.png", price: 1500000 },
-            knife2: { name: "Flip Knife | Doppler", color: "gold", img: "2knife.png", price: 4000000 },
-            knife3: { name: "Gut Knife | Gamma", color: "gold", img: "3knife.png", price: 2800000 },
-            knife4: { name: "M9 Bayonet | Blue Steel", color: "gold", img: "4knife.png", price: 8500000 },
-            knife5: { name: "Huntsman | Fade", color: "gold", img: "5knife.png", price: 15000000 }
+            knife1: { name: "Bowie | Steel", color: "gold", img: "1knife.png" },
+            knife2: { name: "Flip | Doppler", color: "gold", img: "2knife.png" },
+            knife3: { name: "Gut | Gamma", color: "gold", img: "3knife.png" },
+            knife4: { name: "M9 | Bayonet", color: "gold", img: "4knife.png" },
+            knife5: { name: "Huntsman | Fade", color: "gold", img: "5knife.png" }
         };
 
         const config = {
             poor: { title: "Бомж-Кейс", price: 10, drop: [skins.empty], rare: skins.deagle, chanceRare: 0.0001 },
-            norm: { title: "Обычный Кейс", price: 100, drop: [skins.empty, skins.sg, skins.ssg, skins.mp5, skins.mac10, skins.sawed], rare: [skins.ak, skins.knife1], chanceRare: 0.5 },
+            norm: { title: "Обычный Кейс", price: 100, drop: [skins.empty], rare: skins.ak, chanceRare: 0.5 },
             rich: { title: "Кейс Миллионера", price: 2500000, drop: [skins.knife1, skins.knife2, skins.knife3, skins.knife4, skins.knife5] }
         };
 
@@ -149,6 +151,7 @@
             document.getElementById('balanceDisplay').innerText = balance + " NC";
             localStorage.setItem('nc_balance', balance);
             localStorage.setItem('nc_inv', JSON.stringify(inventory));
+            localStorage.setItem('nc_promos', JSON.stringify(usedPromos));
             renderInventory();
         }
 
@@ -176,19 +179,10 @@
             line.innerHTML = ''; line.style.transition = 'none'; line.style.transform = 'translateX(0)';
 
             let win = skins.empty;
-            let r = Math.random() * 100;
+            if(type === 'rich') { win = config.rich.drop[Math.floor(Math.random()*config.rich.drop.length)]; }
 
-            if(type === 'poor') { if(r < 0.0001) win = skins.deagle; }
-            else if(type === 'norm') {
-                if(r < 0.1) win = skins.knife1;
-                else if(r < 2) win = skins.ak;
-                else win = config.norm.drop[Math.floor(Math.random()*config.norm.drop.length)];
-            }
-            else { win = config.rich.drop[Math.floor(Math.random()*config.rich.drop.length)]; }
-
-            let pool = (type === 'rich') ? config.rich.drop : [skins.empty, skins.sg, skins.ssg];
             for(let i=0; i<60; i++) {
-                let s = (i === 55) ? win : pool[Math.floor(Math.random()*pool.length)];
+                let s = (i === 55) ? win : skins.empty;
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
             }
 
@@ -204,11 +198,28 @@
             }, 5500);
         }
 
-        function setStars(val) {
-            document.getElementById('starsIn').value = val;
-            calcNC();
+        function topUp() {
+            let stars = document.getElementById('starsIn').value;
+            // Вызов системного окна оплаты Telegram Stars
+            tg.openInvoice(`https://t.me/notcasecs2_bot/payment?stars=${stars}`, function(status) {
+                if (status === 'paid') {
+                    balance += stars * 100;
+                    updateUI();
+                    tg.showAlert("Оплата успешна! + " + (stars * 100) + " NC");
+                }
+            });
         }
 
+        function applyPromo() {
+            let code = document.getElementById('promoInput').value.toUpperCase();
+            if(["CYGAN", "WELCOME"].includes(code)) {
+                if(usedPromos.includes(code)) return tg.showAlert("Уже использован!");
+                usedPromos.push(code); balance += 500; updateUI();
+                tg.showAlert("Промокод активирован! +500 NC");
+            } else tg.showAlert("Неверный код");
+        }
+
+        function setStars(val) { document.getElementById('starsIn').value = val; calcNC(); }
         function calcNC() {
             let v = document.getElementById('starsIn').value;
             document.getElementById('ncOut').innerText = v * 100;
@@ -217,10 +228,16 @@
 
         function renderInventory() {
             const grid = document.getElementById('inventoryGrid');
-            grid.innerHTML = inventory.length ? '' : 'Пусто';
+            grid.innerHTML = inventory.length ? '' : 'Инвентарь пуст';
             inventory.forEach(i => {
-                grid.innerHTML += `<div class="item ${i.color}" style="min-width:auto; height:80px;"><img src="${i.img}" style="width:60px"></div>`;
+                grid.innerHTML += `<div class="item ${i.color}" style="min-width:auto; height:80px;"><img src="${i.img}"></div>`;
             });
+        }
+
+        if(tg.initDataUnsafe.user) {
+            document.getElementById('userTitle').innerText = "👤 " + tg.initDataUnsafe.user.first_name;
+            document.getElementById('userIdDisplay').innerText = "ID: " + tg.initDataUnsafe.user.id;
+            document.getElementById('refLink').value = "https://t.me/notcasecs2_bot?start=" + tg.initDataUnsafe.user.id;
         }
 
         updateUI();
