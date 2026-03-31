@@ -397,7 +397,17 @@
                 syncWithServer();
             }, 5500);
         }
-
+// Используй это после открытия кейса, чтобы сохранить баланс БЕЗ сообщения о входе
+function fastSaveBalance() {
+    fetch(`${SERVER_URL}/update-balance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            userId: tg.initDataUnsafe.user.id, 
+            balance: balance 
+        })
+    });
+}
         // Инициализация при запуске
         function init() {
             if(tg.initDataUnsafe && tg.initDataUnsafe.user) {
