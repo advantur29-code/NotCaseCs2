@@ -6,94 +6,164 @@
     <title>NotCase CS2</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --blue: #4b69ff; --purple: #8847ff; --pink: #d32ee6; --red: #eb4b4b; --gold: #caab05; }
-        body { background: #0b0b0b; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; }
+        :root { --blue: #4b69ff; --red: #eb4b4b; --gold: #caab05; --gray: #555; }
+        body { background: #0b0b0b; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        .header { margin-top: 20px; font-size: 24px; font-weight: bold; color: #ffca28; }
-        .balance { font-size: 18px; color: #aaa; margin-bottom: 30px; }
+        .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #151515; border-bottom: 1px solid #333; }
+        .balance { color: #ffca28; font-weight: bold; font-size: 1.1rem; }
+        .stars-btn { background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 5px; font-size: 12px; }
+
+        .tabs { display: flex; background: #111; }
+        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab.active { border-color: #ffca28; color: #ffca28; }
+
+        .content { flex: 1; overflow-y: auto; display: none; padding: 20px; }
+        .content.active { display: block; }
 
         /* Рулетка */
-        .roulette-wrapper { position: relative; width: 100%; height: 150px; background: #151515; border-top: 2px solid #333; border-bottom: 2px solid #333; overflow: hidden; display: flex; align-items: center; }
-        .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #ffca28; z-index: 10; transform: translateX(-50%); box-shadow: 0 0 15px #ffca28; }
-        .cases-line { display: flex; transition: transform 6s cubic-bezier(0.1, 0, 0.1, 1); will-change: transform; padding-left: 50%; }
+        .roulette-wrapper { position: relative; width: 100%; height: 130px; background: #151515; border: 2px solid #333; overflow: hidden; margin-top: 50px; }
+        .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #ffca28; z-index: 10; transform: translateX(-50%); }
+        .cases-line { display: flex; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); padding-left: 50%; }
         
-        .item { min-width: 120px; height: 120px; margin: 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-        .item img { width: 80px; z-index: 2; }
+        .item { min-width: 100px; height: 100px; margin: 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; align-items: center; justify-content: center; font-size: 10px; text-align: center; }
+        .item img { width: 70px; }
+        .item.empty { border-color: var(--gray); opacity: 0.5; }
         .item.red { border-color: var(--red); }
         .item.gold { border-color: var(--gold); }
-        .item.pink { border-color: var(--pink); }
 
-        .controls { margin-top: 40px; }
-        .btn-open { background: #ffca28; color: black; border: none; padding: 15px 50px; border-radius: 8px; font-weight: bold; font-size: 18px; cursor: pointer; transition: 0.2s; }
-        .btn-open:active { transform: scale(0.95); }
-        .btn-open:disabled { background: #444; color: #888; }
+        .inventory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .inv-item { background: #1a1a1a; padding: 10px; border-radius: 8px; text-align: center; font-size: 12px; border-bottom: 3px solid var(--blue); }
+        .inv-item img { width: 100%; }
+
+        .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 15px; border-radius: 8px; font-weight: bold; margin-top: 20px; }
+        .btn-main:disabled { background: #444; }
     </style>
 </head>
 <body>
 
-    <div class="header">NotCase CS2 💎</div>
-    <div class="balance">Баланс: <span id="val">1000</span> NC</div>
-
-    <div class="roulette-wrapper">
-        <div class="pointer"></div>
-        <div class="cases-line" id="line">
-            </div>
+    <div class="header">
+        <div>NotCase 💎</div>
+        <div style="text-align: right;">
+            <div class="balance" id="balanceDisplay">100 NC</div>
+            <button class="stars-btn" onclick="topUp()">+ Пополнить (⭐️)</button>
+        </div>
     </div>
 
-    <div class="controls">
-        <button class="btn-open" id="openBtn" onclick="startSpin()">ОТКРЫТЬ КЕЙС</button>
+    <div class="tabs">
+        <div class="tab active" id="tab-open" onclick="switchTab('open')">КЕЙСЫ</div>
+        <div class="tab" id="tab-inv" onclick="switchTab('inv')">ИНВЕНТАРЬ</div>
+    </div>
+
+    <div id="content-open" class="content active">
+        <div class="roulette-wrapper">
+            <div class="pointer"></div>
+            <div id="line" class="cases-line"></div>
+        </div>
+        <button class="btn-main" id="spinBtn" onclick="startSpin()">ОТКРЫТЬ (100 NC)</button>
+        <p style="text-align: center; color: #666; font-size: 12px; margin-top: 10px;">Шанс на дроп: 11%</p>
+    </div>
+
+    <div id="content-inv" class="content">
+        <div id="inventoryGrid" class="inventory-grid"></div>
     </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
 
-        let balance = 1000;
-        const line = document.getElementById('line');
-        const btn = document.getElementById('openBtn');
+        // Загрузка данных или дефолт
+        let balance = parseInt(localStorage.getItem('nc_balance')) || 100;
+        let inventory = JSON.parse(localStorage.getItem('nc_inv')) || [];
 
         const skins = [
-            { name: "P250", color: "blue", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpopujbPg5szuv3fDoQ6924mI-Kmvj6N6juhm5T8fp8i_vD-Y78jR3mrhU9MmqiIdWdclM9Y1vR-Vfsxuvn08S16Z_Ky3Biuic8pSGK2OatS3E" },
-            { name: "AK-47", color: "red", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXU5A1PIYQNqhpOSV-fRPasw8rsUFJ5KBFZo4-pLgls7_33fDxQ69n4kI6YxqL1auLTz2hU68Ypj-yS8In00VGy_0A9Z276IdfGdVU6ZArRr1S4le_v1JW6u8zOzXFiu3V3tn6LnxSp1RwaatEAvvgSclreV_T02pE" },
-            { name: "Knife", color: "gold", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXU5A1PIYQNqhpOSV-fRPasw8rsUFJ5KBFZo4-pLgls7_33fDxQ69n4kI6YxqL1auLTz2hU68Ypj-yS8In00VGy_0A9Z276IdfGdVU6ZArRr1S4le_v1JW6u8zOzXFiu3V3tn6LnxSp1RwaatEAvvgSclreV_T02pE" }
+            { id: 1, name: "Пусто", color: "empty", img: "https://www.freeiconspng.com/thumbs/cross-icon/red-cross-icon-10.png", chance: 89 },
+            { id: 2, name: "P250 | Песчаная дюна", color: "blue", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpopujbPg5szuv3fDoQ6924mI-Kmvj6N6juhm5T8fp8i_vD-Y78jR3mrhU9MmqiIdWdclM9Y1vR-Vfsxuvn08S16Z_Ky3Biuic8pSGK2OatS3E", chance: 8 },
+            { id: 3, name: "AK-47 | Красная линия", color: "red", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXU5A1PIYQNqhpOSV-fRPasw8rsUFJ5KBFZo4-pLgls7_33fDxQ69n4kI6YxqL1auLTz2hU68Ypj-yS8In00VGy_0A9Z276IdfGdVU6ZArRr1S4le_v1JW6u8zOzXFiu3V3tn6LnxSp1RwaatEAvvgSclreV_T02pE", chance: 2.5 },
+            { id: 4, name: "M9 | Штык-нож", color: "gold", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXU5A1PIYQNqhpOSV-fRPasw8rsUFJ5KBFZo4-pLgls7_33fDxQ69n4kI6YxqL1auLTz2hU68Ypj-yS8In00VGy_0A9Z276IdfGdVU6ZArRr1S4le_v1JW6u8zOzXFiu3V3tn6LnxSp1RwaatEAvvgSclreV_T02pE", chance: 0.5 }
         ];
 
-        function generateItems() {
-            line.innerHTML = '';
-            for(let i = 0; i < 50; i++) {
-                let skin = skins[Math.floor(Math.random() * skins.length)];
-                if (i === 45) skin = skins[Math.floor(Math.random() * skins.length)]; // Победный скин
-                
-                const div = document.createElement('div');
-                div.className = `item ${skin.color}`;
-                div.innerHTML = `<img src="${skin.img}">`;
-                line.appendChild(div);
+        function updateUI() {
+            document.getElementById('balanceDisplay').innerText = balance + " NC";
+            localStorage.setItem('nc_balance', balance);
+            localStorage.setItem('nc_inv', JSON.stringify(inventory));
+            renderInventory();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab, .content').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            document.getElementById('content-' + tab).classList.add('active');
+        }
+
+        function getRandomSkin() {
+            let rand = Math.random() * 100;
+            let cumulative = 0;
+            for (let s of skins) {
+                cumulative += s.chance;
+                if (rand < cumulative) return s;
             }
+            return skins[0];
         }
 
         function startSpin() {
-            if (balance < 100) return;
+            if (balance < 100) return tg.showAlert("Мало коинов!");
             balance -= 100;
-            document.getElementById('val').innerText = balance;
-            btn.disabled = true;
-
-            generateItems();
+            updateUI();
+            
+            const line = document.getElementById('line');
+            line.innerHTML = '';
             line.style.transition = 'none';
             line.style.transform = 'translateX(0)';
 
+            let winningSkin = getRandomSkin();
+            
+            for(let i=0; i<60; i++) {
+                let s = (i === 55) ? winningSkin : skins[Math.floor(Math.random()*skins.length)];
+                let div = document.createElement('div');
+                div.className = `item ${s.color}`;
+                div.innerHTML = `<img src="${s.img}">`;
+                line.appendChild(div);
+            }
+
             setTimeout(() => {
-                line.style.transition = 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)';
-                const stopAt = (45 * 130) - (line.parentElement.offsetWidth / 2) + 65; 
-                line.style.transform = `translateX(-${stopAt}px)`;
+                line.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
+                line.style.transform = `translateX(-${55 * 110 - 20}px)`;
             }, 50);
 
             setTimeout(() => {
-                btn.disabled = false;
-                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            }, 6200);
+                if (winningSkin.id !== 1) {
+                    inventory.push(winningSkin);
+                    tg.showAlert("Выпало: " + winningSkin.name);
+                } else {
+                    tg.showConfirm("Пусто! Попробуй еще раз?");
+                }
+                updateUI();
+                document.getElementById('spinBtn').disabled = false;
+            }, 5500);
+            
+            document.getElementById('spinBtn').disabled = true;
         }
 
-        generateItems();
+        function renderInventory() {
+            const grid = document.getElementById('inventoryGrid');
+            grid.innerHTML = inventory.length ? '' : '<p style="color:#666">Тут пока пусто...</p>';
+            inventory.forEach((item, index) => {
+                let div = document.createElement('div');
+                div.className = `inv-item ${item.color}`;
+                div.innerHTML = `<img src="${item.img}"><br>${item.name}`;
+                grid.appendChild(div);
+            });
+        }
+
+        function topUp() {
+            // В реальности тут должен быть запрос к твоему боту/бекенду для создания счета
+            tg.showConfirm("Купить 100 NC за 1 ⭐️?");
+            // Имитация успешной оплаты:
+            balance += 100;
+            updateUI();
+        }
+
+        updateUI();
     </script>
 </body>
 </html>
