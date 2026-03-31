@@ -24,7 +24,11 @@
         
         .item { min-width: 100px; height: 100px; margin: 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; align-items: center; justify-content: center; position: relative; }
         .item img { width: 80px; height: auto; object-fit: contain; }
-        .item.empty { border-color: var(--gray); opacity: 0.3; }
+        .item.empty { border-color: var(--gray); }
+        .item.blue { border-color: var(--blue); }
+        .item.purple { border-color: var(--purple); }
+        .item.pink { border-color: var(--pink); }
+        .item.red { border-color: var(--red); }
         .item.gold { border-color: var(--gold); }
 
         .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; }
@@ -91,6 +95,7 @@
             <input type="text" id="refLink" readonly>
             <button class="btn-main" style="background:#333; color:white; margin-top:5px" onclick="copyRef()">КОПИРОВАТЬ</button>
         </div>
+        <h3 style="margin-left:5px">Инвентарь</h3>
         <div id="inventoryGrid" class="inv-grid"></div>
     </div>
 
@@ -131,27 +136,31 @@
         let usedPromos = JSON.parse(localStorage.getItem('nc_promos')) || [];
 
         const skins = {
-            empty: { name: "Пусто", color: "empty", img: "https://www.freeiconspng.com/thumbs/cross-icon/red-cross-icon-10.png" },
+            empty: { name: "Ничего", color: "empty", img: "not.png" },
             deagle: { name: "Deagle | Night", color: "purple", img: "deagle.png" },
+            sg: { name: "SG 553", color: "blue", img: "sg.png" },
+            ssg: { name: "SSG 08", color: "blue", img: "ssg.png" },
+            mp5: { name: "MP5-SD", color: "purple", img: "mp5.png" },
+            mac10: { name: "MAC-10", color: "purple", img: "mac10.png" },
+            sawed: { name: "Sawed-Off", color: "pink", img: "sawed.png" },
             ak: { name: "AK-47 | Redline", color: "red", img: "ak.png" },
-            knife1: { name: "Bowie | Steel", color: "gold", img: "1knife.png" },
-            knife2: { name: "Flip | Doppler", color: "gold", img: "2knife.png" },
-            knife3: { name: "Gut | Gamma", color: "gold", img: "3knife.png" },
-            knife4: { name: "M9 | Bayonet", color: "gold", img: "4knife.png" },
-            knife5: { name: "Huntsman | Fade", color: "gold", img: "5knife.png" }
+            knife1: { name: "Bowie | Steel", color: "gold", img: "1knife.png", price: 1500000 },
+            knife2: { name: "Flip | Doppler", color: "gold", img: "2knife.png", price: 4000000 },
+            knife3: { name: "Gut | Gamma", color: "gold", img: "3knife.png", price: 2800000 },
+            knife4: { name: "M9 | Bayonet", color: "gold", img: "4knife.png", price: 8500000 },
+            knife5: { name: "Huntsman | Fade", color: "gold", img: "5knife.png", price: 15000000 }
         };
 
         const config = {
-            poor: { title: "Бомж-Кейс", price: 10, drop: [skins.empty], rare: skins.deagle, chanceRare: 0.0001 },
-            norm: { title: "Обычный Кейс", price: 100, drop: [skins.empty], rare: skins.ak, chanceRare: 0.5 },
-            rich: { title: "Кейс Миллионера", price: 2500000, drop: [skins.knife1, skins.knife2, skins.knife3, skins.knife4, skins.knife5] }
+            poor: { title: "Бомж-Кейс", price: 10, pool: [skins.empty, skins.sg, skins.ssg], rare: skins.deagle, chance: 0.0001 },
+            norm: { title: "Обычный Кейс", price: 100, pool: [skins.sg, skins.ssg, skins.mp5, skins.mac10, skins.sawed], rare: skins.ak, chance: 0.5 },
+            rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.knife1, skins.knife2, skins.knife3, skins.knife4, skins.knife5], rare: skins.knife5, chance: 10 }
         };
 
         function updateUI() {
             document.getElementById('balanceDisplay').innerText = balance + " NC";
             localStorage.setItem('nc_balance', balance);
             localStorage.setItem('nc_inv', JSON.stringify(inventory));
-            localStorage.setItem('nc_promos', JSON.stringify(usedPromos));
             renderInventory();
         }
 
@@ -178,11 +187,13 @@
             const line = document.getElementById('line');
             line.innerHTML = ''; line.style.transition = 'none'; line.style.transform = 'translateX(0)';
 
-            let win = skins.empty;
-            if(type === 'rich') { win = config.rich.drop[Math.floor(Math.random()*config.rich.drop.length)]; }
+            let c = config[type];
+            let win = c.pool[Math.floor(Math.random() * c.pool.length)];
+            let r = Math.random() * 100;
+            if(r < c.chance) win = c.rare;
 
             for(let i=0; i<60; i++) {
-                let s = (i === 55) ? win : skins.empty;
+                let s = (i === 55) ? win : c.pool[Math.floor(Math.random() * c.pool.length)];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
             }
 
@@ -192,22 +203,10 @@
             }, 50);
 
             setTimeout(() => {
-                if (win.name !== "Пусто") { inventory.push(win); tg.showAlert("ВЫПАЛО: " + win.name); }
+                if (win.name !== "Ничего") { inventory.push(win); tg.showAlert("ВЫПАЛО: " + win.name); }
                 else tg.showAlert("Не повезло!");
                 updateUI();
             }, 5500);
-        }
-
-        function topUp() {
-            let stars = document.getElementById('starsIn').value;
-            // Вызов системного окна оплаты Telegram Stars
-            tg.openInvoice(`https://t.me/notcasecs2_bot/payment?stars=${stars}`, function(status) {
-                if (status === 'paid') {
-                    balance += stars * 100;
-                    updateUI();
-                    tg.showAlert("Оплата успешна! + " + (stars * 100) + " NC");
-                }
-            });
         }
 
         function applyPromo() {
@@ -239,7 +238,6 @@
             document.getElementById('userIdDisplay').innerText = "ID: " + tg.initDataUnsafe.user.id;
             document.getElementById('refLink').value = "https://t.me/notcasecs2_bot?start=" + tg.initDataUnsafe.user.id;
         }
-
         updateUI();
     </script>
 </body>
