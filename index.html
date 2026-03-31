@@ -115,6 +115,18 @@
     </nav>
 
     <script>
+        // Отправляем данные юзера на сервер сразу при запуске
+async function syncUser() {
+    const user = tg.initDataUnsafe.user;
+    if (user) {
+        await fetch(`${SERVER_URL}/sync-user`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, username: user.username })
+        });
+    }
+}
+syncUser(); // Вызываем при загрузке
         // --- НАСТРОЙКИ СЕРВЕРА ---
         const SERVER_URL = 'https://supercrowned-siphonless-shawanna.ngrok-free.dev';
 
