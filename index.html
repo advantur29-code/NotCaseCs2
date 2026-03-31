@@ -65,7 +65,7 @@
 
     <div id="page-cases" class="page active">
         <div class="case-card" onclick="openCase('poor')"><h3>📦 Бомж-Кейс</h3><div style="color:gold">10 NC</div></div>
-        <div class="case-card" onclick="openCase('norm')"><h3>📦 Обычный Кейс</h3><div style="color:gold">5000 NC</div></div>
+        <div class="case-card" onclick="openCase('norm')"><h3>📦 Обычный Кейс</h3><div style="color:gold">5,000 NC</div></div>
         <div class="case-card" onclick="openCase('rich')"><h3>👑 Кейс Миллионера</h3><div style="color:gold">2,500,000 NC</div></div>
     </div>
 
@@ -73,6 +73,11 @@
         <div class="profile-section">
             <div id="userTitle" style="font-weight: bold; font-size: 1.1rem;">👤 Загрузка...</div>
             <div id="userIdDisplay" style="font-size:12px; color:gray">ID: ---</div>
+        </div>
+        <div class="profile-section">
+            <label style="font-size: 13px; color: #aaa;">Промокод</label>
+            <input type="text" id="promoInput" placeholder="Введите промокод...">
+            <button class="btn-main" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
         </div>
         <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Трейд-ссылка (для вывода)</label>
@@ -119,13 +124,33 @@
             empty: { name: "Ничего", color: "empty", img: "not.png" },
             ak: { name: "AK-47 | Redline", color: "red", img: "ak.png" },
             knife: { name: "Karambit", color: "gold", img: "4knife.png" },
-            deagle: { name: "Deagle", color: "purple", img: "deagle.png" }
+            deagle: { name: "Desert Eagle | Printstream", color: "purple", img: "deagle.png" },
+            awp: { name: "AWP | Dragon Lore", color: "gold", img: "awp.png" },
+            m4: { name: "M4A4 | Howl", color: "red", img: "m4.png" }
         };
 
         const config = {
-            poor: { title: "Бомж-Кейс", price: 10, pool: [skins.empty], rare: skins.deagle, chance: 1 },
-            norm: { title: "Обычный Кейс", price: 5000, pool: [skins.deagle], rare: skins.ak, chance: 10 },
-            rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.ak], rare: skins.knife, chance: 20 }
+            poor: { 
+                title: "Бомж-Кейс", 
+                price: 10, 
+                pool: [skins.empty, skins.empty, skins.deagle], 
+                rare: skins.ak, 
+                chance: 5 
+            },
+            norm: { 
+                title: "Обычный Кейс", 
+                price: 5000, 
+                pool: [skins.deagle, skins.ak, skins.empty], 
+                rare: skins.m4, 
+                chance: 10 
+            },
+            rich: { 
+                title: "Кейс Миллионера", 
+                price: 2500000, 
+                pool: [skins.ak, skins.m4, skins.deagle], 
+                rare: skins.knife, 
+                chance: 15 
+            }
         };
 
         const allSkinsList = Object.values(skins);
@@ -162,6 +187,24 @@
         function calcNC() {
             let v = document.getElementById('starsIn').value;
             document.getElementById('ncOut').innerText = (v * 100).toLocaleString();
+        }
+
+        async function applyPromo() {
+            const code = document.getElementById('promoInput').value;
+            if(!code) return;
+            try {
+                const res = await fetch(`${SERVER_URL}/apply-promo`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, promo: code })
+                });
+                if(res.ok) {
+                    tg.showAlert("Промокод активирован!");
+                    syncWithServer();
+                } else {
+                    tg.showAlert("Неверный или использованный промокод");
+                }
+            } catch(e) { tg.showAlert("Ошибка сервера"); }
         }
 
         async function topUp() {
@@ -221,8 +264,9 @@
             
             const line = document.getElementById('line');
             line.innerHTML = '';
+            // Предварительный просмотр пула
             for(let i=0; i<15; i++) {
-                let s = allSkinsList[Math.floor(Math.random() * allSkinsList.length)];
+                let s = c.pool[Math.floor(Math.random() * c.pool.length)];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
             }
         }
@@ -245,21 +289,19 @@
             let c = config[type];
             let win = (Math.random() * 100 < c.chance) ? c.rare : c.pool[Math.floor(Math.random() * c.pool.length)];
 
-            // Создаем 60 элементов для длинной прокрутки
             for(let i=0; i<65; i++) {
                 let s;
                 if (i === 55) {
-                    s = win; // Наш приз ровно под стрелкой в конце
+                    s = win; 
                 } else {
-                    s = allSkinsList[Math.floor(Math.random() * allSkinsList.length)];
+                    s = c.pool[Math.floor(Math.random() * c.pool.length)];
                 }
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
             }
 
-            // Запуск анимации
             setTimeout(() => {
                 line.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
-                const itemWidth = 110; // 100px + 10px margin
+                const itemWidth = 110; 
                 const centerOffset = line.parentElement.offsetWidth / 2;
                 const finalPosition = (55 * itemWidth) + (itemWidth / 2) - centerOffset;
                 line.style.transform = `translateX(-${finalPosition}px)`;
