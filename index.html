@@ -6,72 +6,94 @@
     <title>NotCase CS2</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body {
-            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
-            color: white;
-            font-family: 'Arial', sans-serif;
-            text-align: center;
-            margin: 0;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
-        .score { font-size: 3rem; font-weight: bold; margin-bottom: 20px; text-shadow: 0 0 15px gold; }
-        .case-container { position: relative; transition: transform 0.1s; cursor: pointer; }
-        .case-container:active { transform: scale(0.95); }
-        .case-img { width: 250px; filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.3)); }
-        .btn-open {
-            margin-top: 30px;
-            padding: 15px 40px;
-            background: linear-gradient(90deg, #ff8c00, #ff0080);
-            border: none;
-            border-radius: 50px;
-            color: white;
-            font-weight: bold;
-            font-size: 1.2rem;
-            box-shadow: 0 5px 15px rgba(255, 0, 128, 0.4);
-        }
+        :root { --blue: #4b69ff; --purple: #8847ff; --pink: #d32ee6; --red: #eb4b4b; --gold: #caab05; }
+        body { background: #0b0b0b; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; }
+        
+        .header { margin-top: 20px; font-size: 24px; font-weight: bold; color: #ffca28; }
+        .balance { font-size: 18px; color: #aaa; margin-bottom: 30px; }
+
+        /* Рулетка */
+        .roulette-wrapper { position: relative; width: 100%; height: 150px; background: #151515; border-top: 2px solid #333; border-bottom: 2px solid #333; overflow: hidden; display: flex; align-items: center; }
+        .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #ffca28; z-index: 10; transform: translateX(-50%); box-shadow: 0 0 15px #ffca28; }
+        .cases-line { display: flex; transition: transform 6s cubic-bezier(0.1, 0, 0.1, 1); will-change: transform; padding-left: 50%; }
+        
+        .item { min-width: 120px; height: 120px; margin: 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .item img { width: 80px; z-index: 2; }
+        .item.red { border-color: var(--red); }
+        .item.gold { border-color: var(--gold); }
+        .item.pink { border-color: var(--pink); }
+
+        .controls { margin-top: 40px; }
+        .btn-open { background: #ffca28; color: black; border: none; padding: 15px 50px; border-radius: 8px; font-weight: bold; font-size: 18px; cursor: pointer; transition: 0.2s; }
+        .btn-open:active { transform: scale(0.95); }
+        .btn-open:disabled { background: #444; color: #888; }
     </style>
 </head>
 <body>
 
-    <div class="score" id="balance">0</div>
-    
-    <div class="case-container" onclick="clickCase(event)">
-        <img src="https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXU5A1PIYQNqhpOSV-fRPasw8rsUFJ5KBFZo4-pLgls7_33fDxQ69n4kI6YxqL1auLTz2hU68Ypj-yS8In00VGy_0A9Z276IdfGdVU6ZArRr1S4le_v1JW6u8zOzXFiu3V3tn6LnxSp1RwaatEAvvgSclreV_T02pE/360fx360f" class="case-img" alt="Case">
+    <div class="header">NotCase CS2 💎</div>
+    <div class="balance">Баланс: <span id="val">1000</span> NC</div>
+
+    <div class="roulette-wrapper">
+        <div class="pointer"></div>
+        <div class="cases-line" id="line">
+            </div>
     </div>
 
-    <button class="btn-open" onclick="openLogic()">ОТКРЫТЬ КЕЙС (100)</button>
+    <div class="controls">
+        <button class="btn-open" id="openBtn" onclick="startSpin()">ОТКРЫТЬ КЕЙС</button>
+    </div>
 
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand(); // Разворачиваем на весь экран
+        tg.expand();
 
-        let balance = 0;
-        const balanceEl = document.getElementById('balance');
+        let balance = 1000;
+        const line = document.getElementById('line');
+        const btn = document.getElementById('openBtn');
 
-        function clickCase(event) {
-            balance += 1;
-            balanceEl.innerText = balance;
-            
-            // Простейшая вибрация при клике (только на телефонах)
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
+        const skins = [
+            { name: "P250", color: "blue", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpopujbPg5szuv3fDoQ6924mI-Kmvj6N6juhm5T8fp8i_vD-Y78jR3mrhU9MmqiIdWdclM9Y1vR-Vfsxuvn08S16Z_Ky3Biuic8pSGK2OatS3E" },
+            { name: "AK-47", color: "red", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXU5A1PIYQNqhpOSV-fRPasw8rsUFJ5KBFZo4-pLgls7_33fDxQ69n4kI6YxqL1auLTz2hU68Ypj-yS8In00VGy_0A9Z276IdfGdVU6ZArRr1S4le_v1JW6u8zOzXFiu3V3tn6LnxSp1RwaatEAvvgSclreV_T02pE" },
+            { name: "Knife", color: "gold", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXU5A1PIYQNqhpOSV-fRPasw8rsUFJ5KBFZo4-pLgls7_33fDxQ69n4kI6YxqL1auLTz2hU68Ypj-yS8In00VGy_0A9Z276IdfGdVU6ZArRr1S4le_v1JW6u8zOzXFiu3V3tn6LnxSp1RwaatEAvvgSclreV_T02pE" }
+        ];
+
+        function generateItems() {
+            line.innerHTML = '';
+            for(let i = 0; i < 50; i++) {
+                let skin = skins[Math.floor(Math.random() * skins.length)];
+                if (i === 45) skin = skins[Math.floor(Math.random() * skins.length)]; // Победный скин
+                
+                const div = document.createElement('div');
+                div.className = `item ${skin.color}`;
+                div.innerHTML = `<img src="${skin.img}">`;
+                line.appendChild(div);
             }
         }
 
-        function openLogic() {
-            if (balance >= 100) {
-                balance -= 100;
-                balanceEl.innerText = balance;
-                alert("Тут скоро будет крутилка ножей!");
-            } else {
-                tg.showAlert("Недостаточно NotCoins!");
-            }
+        function startSpin() {
+            if (balance < 100) return;
+            balance -= 100;
+            document.getElementById('val').innerText = balance;
+            btn.disabled = true;
+
+            generateItems();
+            line.style.transition = 'none';
+            line.style.transform = 'translateX(0)';
+
+            setTimeout(() => {
+                line.style.transition = 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)';
+                const stopAt = (45 * 130) - (line.parentElement.offsetWidth / 2) + 65; 
+                line.style.transform = `translateX(-${stopAt}px)`;
+            }, 50);
+
+            setTimeout(() => {
+                btn.disabled = false;
+                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            }, 6200);
         }
+
+        generateItems();
     </script>
 </body>
 </html>
