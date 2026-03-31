@@ -87,7 +87,7 @@
 
         <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Вывод средств</label>
-            <div style="margin-top: 10px; color: #eb4b4b; font-weight: bold;">Вывод пока что не доступен</div>
+            <div style="margin-top: 10px; color: #eb4b4b; font-weight: bold;">вывод пока что не доступен</div>
         </div>
 
         <h3>Инвентарь</h3>
@@ -198,6 +198,31 @@
             }, 5500);
         }
 
+        async function topUp() {
+            let starsCount = parseInt(document.getElementById('starsIn').value);
+            tg.showConfirm(`Вы действительно хотите купить ${starsCount * 100} NC за ${starsCount} звёзд?`, async (confirm) => {
+                if (confirm) {
+                    try {
+                        let response = await fetch('https://твой-сервер.com/create-stars-invoice', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: tg.initDataUnsafe.user?.id, stars: starsCount })
+                        });
+                        let data = await response.json();
+                        if (data.invoice_url) {
+                            tg.openInvoice(data.invoice_url, (status) => {
+                                if (status === 'paid') tg.showAlert("Оплата успешно завершена!");
+                            });
+                        } else {
+                            tg.showAlert("Ошибка: Сервер не вернул ссылку на оплату.");
+                        }
+                    } catch (e) {
+                        tg.showAlert("Бэкенд не подключен. Настройте сервер для приема платежей.");
+                    }
+                }
+            });
+        }
+
         function applyPromo() {
             let code = document.getElementById('promoInput').value.toUpperCase();
             if(["CYGAN", "WELCOME"].includes(code)) {
@@ -226,7 +251,6 @@
             document.getElementById('starVal').innerText = v;
         }
 
-        // Инициализация данных пользователя
         if(tg.initDataUnsafe.user) {
             document.getElementById('userTitle').innerText = "👤 " + tg.initDataUnsafe.user.first_name;
             document.getElementById('userIdDisplay').innerText = "ID: " + tg.initDataUnsafe.user.id;
