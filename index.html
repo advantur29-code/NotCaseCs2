@@ -7,7 +7,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --blue: #4b69ff; --purple: #8847ff; --pink: #d32ee6; --red: #eb4b4b; --gold: #caab05; --gray: #333; --bg: #0b0b0b; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding-bottom: 70px; overflow-x: hidden; height: 100vh; display: flex; flex-direction: column; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding-bottom: 80px; overflow-x: hidden; height: 100vh; display: flex; flex-direction: column; }
         
         .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #151515; border-bottom: 1px solid #333; }
         .balance { color: #ffca28; font-weight: bold; font-size: 1.1rem; }
@@ -22,8 +22,10 @@
         .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #ffca28; z-index: 10; transform: translateX(-50%); }
         .cases-line { display: flex; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); padding-left: 50%; }
         
-        .item { min-width: 100px; height: 100px; margin: 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; align-items: center; justify-content: center; position: relative; }
-        .item img { width: 80px; height: auto; object-fit: contain; }
+        .item { min-width: 100px; height: 100px; margin: 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .item img { width: 60px; height: auto; object-fit: contain; }
+        
+        /* Цвета редкости */
         .item.empty { border-color: var(--gray); }
         .item.blue { border-color: var(--blue); }
         .item.purple { border-color: var(--purple); }
@@ -33,22 +35,18 @@
 
         .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; }
         .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-sec { width: 100%; background: #333; color: white; border: none; padding: 10px; border-radius: 8px; margin-top: 5px; cursor: pointer; }
+        .btn-withdraw { background: #eb4b4b; color: white; border: none; font-size: 10px; padding: 4px; border-radius: 4px; margin-top: 5px; cursor: pointer; width: 90%; }
 
         .profile-section { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #222; }
         .inv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
         input { background: #111; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; width: calc(100% - 22px); margin: 5px 0; }
 
-        .swap-box { background: #1a1a1a; padding: 20px; border-radius: 15px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; }
-
-        .nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #151515; border-top: 1px solid #333; display: flex; z-index: 50; }
-        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; }
+        .nav { position: fixed; bottom: 0; width: 100%; height: 70px; background: #151515; border-top: 1px solid #333; display: flex; z-index: 50; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; cursor: pointer; }
         .nav-item.active { color: #ffca28; }
 
-        /* Твои новые кнопки выбора */
         .stars-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
         .star-btn { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; cursor: pointer; }
-        .star-btn:active { background: #ffca28; color: black; }
     </style>
 </head>
 <body>
@@ -74,22 +72,18 @@
 
     <div id="page-profile" class="page">
         <div class="profile-section">
-            <div id="userTitle" style="font-weight: bold; font-size: 1.1rem;">👤 Пользователь</div>
+            <div id="userTitle" style="font-weight: bold; font-size: 1.1rem;">👤 Загрузка...</div>
             <div id="userIdDisplay" style="font-size:12px; color:gray">ID: ---</div>
         </div>
         <div class="profile-section">
+            <label style="font-size: 13px; color: #aaa;">Трейд-ссылка (для вывода)</label>
+            <input type="text" id="tradeLinkInput" placeholder="https://steamcommunity.com/tradeoffer/...">
+            <button class="btn-main" onclick="saveTradeLink()">СОХРАНИТЬ ССЫЛКУ</button>
+        </div>
+        <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Промокод</label>
-            <input type="text" id="promoInput" placeholder="Введите код">
+            <input type="text" id="promoInput" placeholder="WELCOME">
             <button class="btn-main" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
-        </div>
-        <div class="profile-section">
-            <label style="font-size: 13px; color: #aaa;">Реферальная ссылка</label>
-            <input type="text" id="refLink" readonly>
-            <button class="btn-sec" onclick="copyRef()">КОПИРОВАТЬ</button>
-        </div>
-        <div class="profile-section">
-            <label style="font-size: 13px; color: #aaa;">Вывод средств</label>
-            <div style="margin-top: 10px; color: #eb4b4b; font-weight: bold;">вывод пока что не доступен</div>
         </div>
         <h3>Инвентарь</h3>
         <div id="inventoryGrid" class="inv-grid"></div>
@@ -98,129 +92,136 @@
     <div id="page-shop" class="page">
         <div class="stars-grid">
             <button class="star-btn" onclick="setStars(10)">⭐ 10</button>
-            <button class="star-btn" onclick="setStars(25)">⭐ 25</button>
             <button class="star-btn" onclick="setStars(50)">⭐ 50</button>
             <button class="star-btn" onclick="setStars(100)">⭐ 100</button>
+            <button class="star-btn" onclick="setStars(500)">⭐ 500</button>
         </div>
-        <div class="swap-box">
-            <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:60px"> ➔ <span id="ncOut">1000</span> NC
+        <div style="text-align:center; margin-bottom:20px;">
+            <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:80px; text-align:center"> ⭐ = <span id="ncOut" style="color:gold; font-weight:bold">1000</span> NC
         </div>
-        <button class="btn-main" onclick="topUp()">ПОПОЛНИТЬ ⭐ <span id="starVal">10</span></button>
+        <button class="btn-main" onclick="topUp()">ПОПОЛНИТЬ ЧЕРЕЗ STARS</button>
     </div>
 
     <nav class="nav">
-        <div class="nav-item active" onclick="nav('cases')">📦<br>Кейсы</div>
-        <div class="nav-item" onclick="nav('profile')">👤<br>Профиль</div>
-        <div class="nav-item" onclick="nav('shop')">⭐<br>Магазин</div>
+        <div id="nav-cases" class="nav-item active" onclick="nav('cases')">📦<br>Кейсы</div>
+        <div id="nav-profile" class="nav-item" onclick="nav('profile')">👤<br>Профиль</div>
+        <div id="nav-shop" class="nav-item" onclick="nav('shop')">⭐<br>Магазин</div>
     </nav>
 
     <script>
         const tg = window.Telegram.WebApp;
-let currentBalance = 0; // Локальная переменная для отображения
-
-async function syncWithServer() {
-    const user = tg.initDataUnsafe.user;
-    const response = await fetch(`${SERVER_URL}/sync-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, username: user.username })
-    });
-    const data = await response.json();
-    
-    // ПРИНУДИТЕЛЬНО ПЕРЕЗАПИСЫВАЕМ БАЛАНС ДАННЫМИ С СЕРВЕРА
-    currentBalance = data.balance;
-    document.getElementById('balance-text').innerText = currentBalance;
-}
-
-// Вызывай это сразу при загрузке страницы
-syncWithServer();
-
-// Функция для кнопки "Вывести" в инвентаре
-function requestWithdraw(itemName) {
-    fetch(`${SERVER_URL}/withdraw-item`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, item: itemName })
-    }).then(() => alert("Заявка отправлена админу!"));
-}
-
-// Функция для сохранения трейд-ссылки
-function updateTradeLink(link) {
-    fetch(`${SERVER_URL}/save-trade`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, tradeLink: link })
-    });
-}
-        // Отправляем данные юзера на сервер сразу при запуске
-async function syncUser() {
-    const user = tg.initDataUnsafe.user;
-    if (user) {
-        await fetch(`${SERVER_URL}/sync-user`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.id, username: user.username })
-        });
-    }
-}
-syncUser(); // Вызываем при загрузке
-        // --- НАСТРОЙКИ СЕРВЕРА ---
-        const SERVER_URL = 'https://supercrowned-siphonless-shawanna.ngrok-free.dev';
-
-        let tg = window.Telegram.WebApp;
         tg.expand();
 
-        let balance = parseInt(localStorage.getItem('nc_balance')) || 100;
+        const SERVER_URL = 'https://supercrowned-siphonless-shawanna.ngrok-free.dev'; // ПРОВЕРЬ ССЫЛКУ!
+        let balance = 0;
         let inventory = JSON.parse(localStorage.getItem('nc_inv')) || [];
-        let usedPromos = JSON.parse(localStorage.getItem('nc_promos')) || [];
 
+        // Скины
         const skins = {
             empty: { name: "Ничего", color: "empty", img: "not.png" },
-            deagle: { name: "Deagle | Night", color: "purple", img: "deagle.png" },
-            sg: { name: "SG 553", color: "blue", img: "sg.png" },
-            ssg: { name: "SSG 08", color: "blue", img: "ssg.png" },
-            mp5: { name: "MP5-SD", color: "purple", img: "mp5.png" },
-            mac10: { name: "MAC-10", color: "purple", img: "mac10.png" },
-            sawed: { name: "Sawed-Off", color: "pink", img: "sawed.png" },
             ak: { name: "AK-47 | Redline", color: "red", img: "ak.png" },
-            knife1: { name: "Bowie | Steel", color: "gold", img: "1knife.png" },
-            knife2: { name: "Flip | Doppler", color: "gold", img: "2knife.png" },
-            knife3: { name: "Gut | Gamma", color: "gold", img: "3knife.png" },
-            knife4: { name: "M9 | Bayonet", color: "gold", img: "4knife.png" },
-            knife5: { name: "Huntsman | Fade", color: "gold", img: "5knife.png" }
+            knife: { name: "Karambit", color: "gold", img: "4knife.png" },
+            deagle: { name: "Deagle", color: "purple", img: "deagle.png" }
         };
 
         const config = {
-            poor: { title: "Бомж-Кейс", price: 10, pool: [skins.empty], rare: skins.deagle, chance: 0.0001 },
-            norm: { title: "Обычный Кейс", price: 5000, pool: [skins.sg, skins.ssg, skins.mp5, skins.mac10, skins.sawed], rare: skins.ak, chance: 0.5 },
-            rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.knife1, skins.knife2, skins.knife3, skins.knife4], rare: skins.knife5, chance: 10 }
+            poor: { title: "Бомж-Кейс", price: 10, pool: [skins.empty], rare: skins.deagle, chance: 1 },
+            norm: { title: "Обычный Кейс", price: 5000, pool: [skins.deagle], rare: skins.ak, chance: 10 },
+            rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.ak], rare: skins.knife, chance: 20 }
         };
 
+        // --- СИНХРОНИЗАЦИЯ ---
+        async function syncWithServer() {
+            const user = tg.initDataUnsafe.user;
+            if(!user) return;
+            
+            try {
+                const response = await fetch(`${SERVER_URL}/sync-user`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id, username: user.username })
+                });
+                const data = await response.json();
+                balance = data.balance;
+                document.getElementById('tradeLinkInput').value = data.tradeLink || '';
+                updateUI();
+            } catch (e) { console.error("Ошибка синхронизации"); }
+        }
+
         function updateUI() {
-            document.getElementById('balanceDisplay').innerText = balance + " NC";
-            localStorage.setItem('nc_balance', balance);
-            localStorage.setItem('nc_inv', JSON.stringify(inventory));
-            localStorage.setItem('nc_promos', JSON.stringify(usedPromos));
+            document.getElementById('balanceDisplay').innerText = balance.toLocaleString() + " NC";
             renderInventory();
         }
 
-        function nav(page) {
-            document.querySelectorAll('.page, .nav-item').forEach(e => e.classList.remove('active'));
-            document.getElementById('page-' + page).classList.add('active');
-            if(event) event.currentTarget.classList.add('active');
+        // --- НАВИГАЦИЯ ---
+        function nav(pageId) {
+            // Скрываем все страницы
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            // Убираем активный класс у кнопок
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            
+            // Показываем нужную
+            document.getElementById('page-' + pageId).classList.add('active');
+            document.getElementById('nav-' + pageId).classList.add('active');
         }
 
-        function setStars(amount) {
-            document.getElementById('starsIn').value = amount;
-            calcNC();
-        }
-
+        // --- МАГАЗИН ---
+        function setStars(val) { document.getElementById('starsIn').value = val; calcNC(); }
         function calcNC() {
             let v = document.getElementById('starsIn').value;
-            document.getElementById('ncOut').innerText = v * 100;
-            document.getElementById('starVal').innerText = v;
+            document.getElementById('ncOut').innerText = (v * 100).toLocaleString();
         }
 
+        async function topUp() {
+            let starsCount = parseInt(document.getElementById('starsIn').value);
+            let response = await fetch(`${SERVER_URL}/create-invoice`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: tg.initDataUnsafe.user?.id, stars: starsCount })
+            });
+            let data = await response.json();
+            if (data.url) tg.openInvoice(data.url, (status) => { if(status === 'paid') syncWithServer(); });
+        }
+
+        // --- ПРОФИЛЬ ---
+        async function saveTradeLink() {
+            const link = document.getElementById('tradeLinkInput').value;
+            await fetch(`${SERVER_URL}/save-trade`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, tradeLink: link })
+            });
+            tg.showAlert("Трейд-ссылка сохранена!");
+        }
+
+        function renderInventory() {
+            const grid = document.getElementById('inventoryGrid');
+            grid.innerHTML = '';
+            inventory.forEach((item, index) => {
+                grid.innerHTML += `
+                    <div class="item ${item.color}">
+                        <img src="${item.img}">
+                        <button class="btn-withdraw" onclick="withdrawItem(${index})">ВЫВЕСТИ</button>
+                    </div>`;
+            });
+        }
+
+        async function withdrawItem(index) {
+            const item = inventory[index];
+            const res = await fetch(`${SERVER_URL}/withdraw-item`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, item: item.name })
+            });
+            if(res.ok) {
+                tg.showAlert("Заявка на " + item.name + " отправлена админу!");
+                inventory.splice(index, 1);
+                localStorage.setItem('nc_inv', JSON.stringify(inventory));
+                renderInventory();
+            }
+        }
+
+        // --- КЕЙСЫ (ЛОГИКА) ---
         function openCase(type) {
             let c = config[type];
             document.getElementById('modalTitle').innerText = c.title;
@@ -240,7 +241,7 @@ syncUser(); // Вызываем при загрузке
 
         function startSpin(price, type) {
             if (balance < price) return tg.showAlert("Мало NC!");
-            balance -= price; updateUI();
+            balance -= price; updateUI(); // Снимаем баланс локально для красоты
             
             const line = document.getElementById('line');
             line.style.transition = 'none';
@@ -248,11 +249,10 @@ syncUser(); // Вызываем при загрузке
             line.innerHTML = '';
 
             let c = config[type];
-            let win = c.pool[Math.floor(Math.random() * c.pool.length)];
-            if(Math.random() * 100 < c.chance) win = c.rare;
+            let win = (Math.random() * 100 < c.chance) ? c.rare : c.pool[Math.floor(Math.random() * c.pool.length)];
 
             for(let i=0; i<60; i++) {
-                let s = (i === 55) ? win : c.pool[Math.floor(Math.random() * c.pool.length)];
+                let s = (i === 55) ? win : (c.pool[Math.floor(Math.random() * c.pool.length)]);
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
             }
 
@@ -262,64 +262,21 @@ syncUser(); // Вызываем при загрузке
             }, 50);
 
             setTimeout(() => {
-                if (win.name !== "Ничего") { inventory.push(win); tg.showAlert("ВЫПАЛО: " + win.name); }
-                else tg.showAlert("Не повезло!");
-                updateUI();
+                if (win.name !== "Ничего") { 
+                    inventory.push(win); 
+                    localStorage.setItem('nc_inv', JSON.stringify(inventory));
+                    tg.showAlert("ВЫПАЛО: " + win.name); 
+                }
+                syncWithServer(); // Обновляем баланс с сервера
             }, 5500);
         }
 
-        async function topUp() {
-            let starsCount = parseInt(document.getElementById('starsIn').value);
-            tg.showConfirm(`Вы действительно хотите купить ${starsCount * 100} NC за ${starsCount} звёзд?`, async (confirm) => {
-                if (confirm) {
-                    try {
-                        let response = await fetch(`${SERVER_URL}/create-invoice`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId: tg.initDataUnsafe.user?.id, stars: starsCount })
-                        });
-                        let data = await response.json();
-                        if (data.url) {
-                            tg.openInvoice(data.url, (status) => {
-                                if (status === 'paid') tg.showAlert("Оплата завершена! Ожидайте начисления.");
-                            });
-                        }
-                    } catch (e) {
-                        tg.showAlert("Ошибка связи с сервером!");
-                    }
-                }
-            });
-        }
-
-        function applyPromo() {
-            let code = document.getElementById('promoInput').value.toUpperCase();
-            if(["CYGAN", "WELCOME"].includes(code)) {
-                if(usedPromos.includes(code)) return tg.showAlert("Уже использован!");
-                usedPromos.push(code); balance += 500; updateUI();
-                tg.showAlert("Промокод активирован! +500 NC");
-            } else tg.showAlert("Неверный код");
-        }
-
-        function copyRef() {
-            let copyText = document.getElementById("refLink");
-            copyText.select();
-            document.execCommand("copy");
-            tg.showAlert("Ссылка скопирована!");
-        }
-
-        function renderInventory() {
-            const grid = document.getElementById('inventoryGrid');
-            grid.innerHTML = inventory.length ? '' : 'Инвентарь пуст';
-            inventory.forEach(i => grid.innerHTML += `<div class="item ${i.color}" style="height:80px;"><img src="${i.img}"></div>`);
-        }
-
+        // Инициализация
         if(tg.initDataUnsafe.user) {
             document.getElementById('userTitle').innerText = "👤 " + tg.initDataUnsafe.user.first_name;
             document.getElementById('userIdDisplay').innerText = "ID: " + tg.initDataUnsafe.user.id;
-            document.getElementById('refLink').value = "https://t.me/notcasecs2_bot?start=" + tg.initDataUnsafe.user.id;
+            syncWithServer();
         }
-
-        updateUI();
     </script>
 </body>
 </html>
