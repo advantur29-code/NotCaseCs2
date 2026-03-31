@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NotCase CS2</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            color: white;
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .score { font-size: 3rem; font-weight: bold; margin-bottom: 20px; text-shadow: 0 0 15px gold; }
+        .case-container { position: relative; transition: transform 0.1s; cursor: pointer; }
+        .case-container:active { transform: scale(0.95); }
+        .case-img { width: 250px; filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.3)); }
+        .btn-open {
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: linear-gradient(90deg, #ff8c00, #ff0080);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 5px 15px rgba(255, 0, 128, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="score" id="balance">0</div>
+    
+    <div class="case-container" onclick="clickCase(event)">
+        <img src="https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXU5A1PIYQNqhpOSV-fRPasw8rsUFJ5KBFZo4-pLgls7_33fDxQ69n4kI6YxqL1auLTz2hU68Ypj-yS8In00VGy_0A9Z276IdfGdVU6ZArRr1S4le_v1JW6u8zOzXFiu3V3tn6LnxSp1RwaatEAvvgSclreV_T02pE/360fx360f" class="case-img" alt="Case">
+    </div>
+
+    <button class="btn-open" onclick="openLogic()">ОТКРЫТЬ КЕЙС (100)</button>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Разворачиваем на весь экран
+
+        let balance = 0;
+        const balanceEl = document.getElementById('balance');
+
+        function clickCase(event) {
+            balance += 1;
+            balanceEl.innerText = balance;
+            
+            // Простейшая вибрация при клике (только на телефонах)
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+        }
+
+        function openLogic() {
+            if (balance >= 100) {
+                balance -= 100;
+                balanceEl.innerText = balance;
+                alert("Тут скоро будет крутилка ножей!");
+            } else {
+                tg.showAlert("Недостаточно NotCoins!");
+            }
+        }
+    </script>
+</body>
+</html>
