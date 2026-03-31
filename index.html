@@ -65,7 +65,7 @@
 
     <div id="page-cases" class="page active">
         <div class="case-card" onclick="openCase('poor')"><h3>📦 Бомж-Кейс</h3><div style="color:gold">10 NC</div></div>
-        <div class="case-card" onclick="openCase('norm')"><h3>📦 Обычный Кейс</h3><div style="color:gold">5,000 NC</div></div>
+        <div class="case-card" onclick="openCase('norm')"><h3>📦 Обычный Кейс</h3><div style="color:gold">15,000 NC</div></div>
         <div class="case-card" onclick="openCase('rich')"><h3>👑 Кейс Миллионера</h3><div style="color:gold">2,500,000 NC</div></div>
     </div>
 
@@ -122,10 +122,14 @@
 
         const skins = {
             empty: { name: "Ничего", color: "empty", img: "not.png" },
+            shirp1: { name: "Shirp 1", color: "blue", img: "shirp1.png" },
+            shirp2: { name: "Shirp 2", color: "blue", img: "shirp2.png" },
+            shirp3: { name: "Shirp 3", color: "blue", img: "shirp3.png" },
+            shirp4: { name: "Shirp 4", color: "blue", img: "shirp4.png" },
+            shirp5: { name: "Shirp 5", color: "blue", img: "shirp5.png" },
             ak: { name: "AK-47 | Redline", color: "red", img: "ak.png" },
             knife: { name: "Karambit", color: "gold", img: "4knife.png" },
             deagle: { name: "Desert Eagle | Printstream", color: "purple", img: "deagle.png" },
-            awp: { name: "AWP | Dragon Lore", color: "gold", img: "awp.png" },
             m4: { name: "M4A4 | Howl", color: "red", img: "m4.png" }
         };
 
@@ -133,16 +137,16 @@
             poor: { 
                 title: "Бомж-Кейс", 
                 price: 10, 
-                pool: [skins.empty, skins.empty, skins.deagle], 
-                rare: skins.ak, 
-                chance: 5 
+                pool: [skins.empty], 
+                rare: skins.knife, 
+                chance: 0.01 
             },
             norm: { 
                 title: "Обычный Кейс", 
-                price: 5000, 
-                pool: [skins.deagle, skins.ak, skins.empty], 
-                rare: skins.m4, 
-                chance: 10 
+                price: 15000, 
+                pool: [skins.shirp1, skins.shirp2, skins.shirp3, skins.shirp4, skins.shirp5], 
+                rare: skins.ak, 
+                chance: 10 // 10% шанс на дроп вообще (90% ничего)
             },
             rich: { 
                 title: "Кейс Миллионера", 
@@ -152,8 +156,6 @@
                 chance: 15 
             }
         };
-
-        const allSkinsList = Object.values(skins);
 
         async function syncWithServer() {
             const user = tg.initDataUnsafe.user;
@@ -234,7 +236,7 @@
             inventory.forEach((item, index) => {
                 grid.innerHTML += `
                     <div class="item ${item.color}">
-                        <img src="${item.img}">
+                        <img src="${item.img}" onerror="this.src='not.png'">
                         <button class="btn-withdraw" onclick="withdrawItem(${index})">ВЫВЕСТИ</button>
                     </div>`;
             });
@@ -263,11 +265,14 @@
             document.getElementById('caseModal').style.display = 'block';
             
             const line = document.getElementById('line');
+            line.style.transition = 'none';
+            line.style.transform = 'translateX(0)';
             line.innerHTML = '';
-            // Предварительный просмотр пула
+            
+            let previewPool = [...c.pool, c.rare, skins.empty];
             for(let i=0; i<15; i++) {
-                let s = c.pool[Math.floor(Math.random() * c.pool.length)];
-                line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
+                let s = previewPool[Math.floor(Math.random() * previewPool.length)];
+                line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
             }
         }
 
@@ -287,16 +292,24 @@
             line.innerHTML = '';
 
             let c = config[type];
-            let win = (Math.random() * 100 < c.chance) ? c.rare : c.pool[Math.floor(Math.random() * c.pool.length)];
+            let win;
+            let roll = Math.random() * 100;
 
+            // Логика шансов по твоим условиям
+            if (type === 'poor') {
+                win = (roll <= 0.01) ? skins.knife : skins.empty;
+            } else if (type === 'norm') {
+                // 10% шанс на ширпотреб, иначе ничего
+                win = (roll <= 10) ? c.pool[Math.floor(Math.random() * c.pool.length)] : skins.empty;
+            } else {
+                // Для мажоров
+                win = (roll <= c.chance) ? c.rare : c.pool[Math.floor(Math.random() * c.pool.length)];
+            }
+
+            let spinPool = [...c.pool, c.rare, skins.empty];
             for(let i=0; i<65; i++) {
-                let s;
-                if (i === 55) {
-                    s = win; 
-                } else {
-                    s = c.pool[Math.floor(Math.random() * c.pool.length)];
-                }
-                line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
+                let s = (i === 55) ? win : spinPool[Math.floor(Math.random() * spinPool.length)];
+                line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
             }
 
             setTimeout(() => {
