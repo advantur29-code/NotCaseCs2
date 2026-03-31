@@ -383,7 +383,15 @@
                 syncWithServer();
             }, 5500);
         }
-
+// Пример логики на сервере (Node.js/Express)
+app.post('/apply-promo', (req, res) => {
+    const { userId, promo } = req.body;
+    if (promo === 'WELCOME' || promo === 'CYGAN') {
+        // логика начисления баланса
+        return res.status(200).send({ ok: true });
+    }
+    res.status(400).send({ error: 'Неверный код' });
+});
         if(tg.initDataUnsafe.user) {
             document.getElementById('userTitle').innerText = "👤 " + tg.initDataUnsafe.user.first_name;
             document.getElementById('userIdDisplay').innerText = "ID: " + tg.initDataUnsafe.user.id;
