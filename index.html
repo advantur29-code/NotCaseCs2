@@ -115,6 +115,43 @@
     </nav>
 
     <script>
+        const tg = window.Telegram.WebApp;
+let currentBalance = 0; // Локальная переменная для отображения
+
+async function syncWithServer() {
+    const user = tg.initDataUnsafe.user;
+    const response = await fetch(`${SERVER_URL}/sync-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, username: user.username })
+    });
+    const data = await response.json();
+    
+    // ПРИНУДИТЕЛЬНО ПЕРЕЗАПИСЫВАЕМ БАЛАНС ДАННЫМИ С СЕРВЕРА
+    currentBalance = data.balance;
+    document.getElementById('balance-text').innerText = currentBalance;
+}
+
+// Вызывай это сразу при загрузке страницы
+syncWithServer();
+
+// Функция для кнопки "Вывести" в инвентаре
+function requestWithdraw(itemName) {
+    fetch(`${SERVER_URL}/withdraw-item`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, item: itemName })
+    }).then(() => alert("Заявка отправлена админу!"));
+}
+
+// Функция для сохранения трейд-ссылки
+function updateTradeLink(link) {
+    fetch(`${SERVER_URL}/save-trade`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, tradeLink: link })
+    });
+}
         // Отправляем данные юзера на сервер сразу при запуске
 async function syncUser() {
     const user = tg.initDataUnsafe.user;
