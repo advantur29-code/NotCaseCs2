@@ -15,6 +15,10 @@
         .page { display: none; flex: 1; overflow-y: auto; padding: 20px; }
         .page.active { display: block; }
 
+        /* Окно кейса (Modal) */
+        .case-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; padding: 20px; box-sizing: border-box; }
+        .close-modal { position: absolute; top: 20px; right: 20px; font-size: 30px; color: #666; }
+
         /* Рулетка */
         .roulette-wrapper { position: relative; width: 100%; height: 130px; background: #151515; border: 2px solid #333; overflow: hidden; margin: 20px 0; }
         .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #ffca28; z-index: 10; transform: translateX(-50%); }
@@ -26,20 +30,16 @@
         .item.red { border-color: var(--red); }
         .item.gold { border-color: var(--gold); }
 
-        /* Карточки кейсов */
         .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; }
         .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-        /* Профиль */
         .profile-section { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
         .inv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
         input { background: #000; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; width: calc(100% - 22px); margin: 5px 0; }
 
-        /* Магазин */
         .swap-box { background: #1a1a1a; padding: 20px; border-radius: 15px; text-align: center; display: flex; align-items: center; justify-content: space-around; }
 
-        /* Навигация */
-        .nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #151515; border-top: 1px solid #333; display: flex; }
+        .nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #151515; border-top: 1px solid #333; display: flex; z-index: 50; }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; }
         .nav-item.active { color: #ffca28; }
     </style>
@@ -51,50 +51,61 @@
         <div class="balance" id="balanceDisplay">100 NC</div>
     </div>
 
+    <div id="caseModal" class="case-modal">
+        <div class="close-modal" onclick="closeCase()">×</div>
+        <h2 id="modalTitle" style="text-align:center">Название Кейса</h2>
+        
+        <div class="roulette-wrapper">
+            <div class="pointer"></div>
+            <div id="line" class="cases-line"></div>
+        </div>
+
+        <button class="btn-main" id="modalSpinBtn">ОТКРЫТЬ КЕЙС</button>
+        <p id="modalPrice" style="text-align:center; color:gold; margin-top:10px"></p>
+        
+        <div style="margin-top:30px">
+            <h4>Содержимое:</h4>
+            <div id="possibleItems" style="display:flex; gap:10px; overflow-x:auto; padding-bottom:10px"></div>
+        </div>
+    </div>
+
     <div id="page-cases" class="page active">
-        <div id="rouletteBlock" style="display:none;">
-            <div class="roulette-wrapper">
-                <div class="pointer"></div>
-                <div id="line" class="cases-line"></div>
-            </div>
+        <div class="case-card" onclick="openCase('poor')">
+            <h3>📦 Бомж-Кейс</h3>
+            <div style="color: #666; font-size: 12px;">Шанс на Калаш: 0.001%</div>
+            <div style="margin-bottom:10px; color:gold">10 NC</div>
+            <button class="btn-main">ПОСМОТРЕТЬ</button>
         </div>
 
-        <div class="case-card">
-            <h3 style="margin:0">Бомж-Кейс</h3>
-            <p style="color: #666; font-size: 12px;">Шанс на Калаш: 0.01%</p>
-            <div style="margin-bottom:10px">10 NC</div>
-            <button class="btn-main" id="spinBtn1" onclick="startSpin(10, 'poor')">ОТКРЫТЬ</button>
+        <div class="case-card" onclick="openCase('norm')">
+            <h3>📦 Обычный Кейс</h3>
+            <div style="margin-bottom:10px; color:gold">100 NC</div>
+            <button class="btn-main">ПОСМОТРЕТЬ</button>
         </div>
 
-        <div class="case-card">
-            <h3 style="margin:0">Обычный Кейс</h3>
-            <div style="margin-bottom:10px">100 NC</div>
-            <button class="btn-main" id="spinBtn2" onclick="startSpin(100, 'norm')">ОТКРЫТЬ</button>
-        </div>
-
-        <div class="case-card">
-            <h3 style="margin:0">👑 Кейс Миллионера</h3>
-            <div style="margin-bottom:10px">1,500,000 NC</div>
-            <button class="btn-main" id="spinBtn3" onclick="startSpin(1500000, 'rich')">ОТКРЫТЬ</button>
+        <div class="case-card" onclick="openCase('rich')">
+            <h3>👑 Кейс Миллионера</h3>
+            <div style="margin-bottom:10px; color:gold">1,500,000 NC</div>
+            <button class="btn-main">ПОСМОТРЕТЬ</button>
         </div>
     </div>
 
     <div id="page-profile" class="page">
         <div class="profile-section">
-            <div style="font-size:20px">👤 Advantur</div>
-            <div style="font-size:12px; color:gray">ID: 8297728079</div>
+            <div style="font-size:20px" id="userTitle">👤 Advantur</div>
+            <div style="font-size:12px; color:gray" id="userIdDisplay">ID: 8297728079</div>
+        </div>
+
+        <div class="profile-section">
+            <label>Ваша реф-ссылка (50 NC за друга):</label>
+            <input type="text" id="refLink" readonly>
+            <button class="btn-main" style="background:#444; color:white" onclick="copyRef()">КОПИРОВАТЬ</button>
         </div>
 
         <div class="profile-section">
             <label>Промокод:</label>
             <input type="text" id="promoInput" placeholder="Введите код...">
             <button class="btn-main" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
-        </div>
-
-        <div class="profile-section">
-            <label>Трейд-ссылка Steam:</label>
-            <input type="text" id="tradeLink" placeholder="https://steamcommunity.com/tradeoffer/...">
-            <button class="btn-main" style="background:#444; color:white" onclick="saveTrade()">СОХРАНИТЬ</button>
         </div>
 
         <h4>Инвентарь</h4>
@@ -108,7 +119,7 @@
             <div style="font-size:20px">➔</div>
             <div>💎 <input type="number" id="ncOut" value="100" oninput="calcStars()" style="width:80px"></div>
         </div>
-        <button class="btn-main" style="margin-top:20px; background:#007bff; color:white" onclick="topUp()">ПОПОЛНИТЬ (⭐️ <span id="starVal">1</span>)</button>
+        <button class="btn-main" style="margin-top:20px; background:#007bff; color:white" onclick="topUp()">КУПИТЬ (⭐️ <span id="starVal">1</span>)</button>
     </div>
 
     <nav class="nav">
@@ -124,11 +135,22 @@
         let balance = parseInt(localStorage.getItem('nc_balance')) || 100;
         let inventory = JSON.parse(localStorage.getItem('nc_inv')) || [];
         let usedPromos = JSON.parse(localStorage.getItem('nc_promos')) || [];
+        let userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "8297728079";
+
+        document.getElementById('refLink').value = "https://t.me/notcasecs2_bot?start=" + userId;
+        document.getElementById('userIdDisplay').innerText = "ID: " + userId;
+        if(tg.initDataUnsafe.user) document.getElementById('userTitle').innerText = "👤 " + tg.initDataUnsafe.user.first_name;
 
         const skins = {
             empty: { id: 1, name: "Пусто", color: "empty", img: "https://www.freeiconspng.com/thumbs/cross-icon/red-cross-icon-10.png" },
             ak: { id: 3, name: "AK-47 | Redline", color: "red", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXU5A1PIYQNqhpOSV-fRPasw8rsUFJ5KBFZo4-pLgls7_33fDxQ69n4kI6YxqL1auLTz2hU68Ypj-yS8In00VGy_0A9Z276IdfGdVU6ZArRr1S4le_v1JW6u8zOzXFiu3V3tn6LnxSp1RwaatEAvvgSclreV_T02pE" },
-            knife: { id: 4, name: "M9 | Knife", color: "gold", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXU5A1PIYQNqhpOSV-fRPasw8rsUFJ5KBFZo4-pLgls7_33fDxQ69n4kI6YxqL1auLTz2hU68Ypj-yS8In00VGy_0A9Z276IdfGdVU6ZArRr1S4le_v1JW6u8zOzXFiu3V3tn6LnxSp1RwaatEAvvgSclreV_T02pE" }
+            knife: { id: 4, name: "M9 | Knife", color: "gold", img: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpovbSs_fX2fzzCajAHpInmhr-AmeX5P77DqWhEup9x3L6Zrd2t3Faw-EM6Nm32J4XAdlA8YV7R_lG-xOfsh5S1vsvNmnRqunI8pSGKp_L5R6I" }
+        };
+
+        const config = {
+            poor: { title: "Бомж-Кейс", price: 10, drop: [skins.empty, skins.ak], chanceAK: 0.001 },
+            norm: { title: "Обычный Кейс", price: 100, drop: [skins.empty, skins.ak, skins.knife], chanceAK: 3, chanceKnife: 0.5 },
+            rich: { title: "Кейс Миллионера", price: 1500000, drop: [skins.knife] }
         };
 
         function updateUI() {
@@ -145,29 +167,22 @@
             event.currentTarget.classList.add('active');
         }
 
-        function calcNC() {
-            let s = document.getElementById('starsIn').value;
-            document.getElementById('ncOut').value = s * 100;
-            document.getElementById('starVal').innerText = s;
+        function openCase(type) {
+            let c = config[type];
+            document.getElementById('modalTitle').innerText = c.title;
+            document.getElementById('modalPrice').innerText = "Цена: " + c.price + " NC";
+            document.getElementById('modalSpinBtn').onclick = () => startSpin(c.price, type);
+            
+            const possible = document.getElementById('possibleItems');
+            possible.innerHTML = c.drop.map(i => `<div class="item ${i.color}" style="min-width:60px; height:60px"><img src="${i.img}" style="width:40px"></div>`).join('');
+            
+            document.getElementById('caseModal').style.display = 'block';
+            document.getElementById('line').innerHTML = '';
+            document.getElementById('line').style.transform = 'translateX(0)';
         }
 
-        function calcStars() {
-            let n = document.getElementById('ncOut').value;
-            document.getElementById('starsIn').value = n / 100;
-            document.getElementById('starVal').innerText = n / 100;
-        }
-
-        function applyPromo() {
-            let code = document.getElementById('promoInput').value.toUpperCase();
-            if(["CYGAN", "MARMIX", "WELCOME"].includes(code)) {
-                if(usedPromos.includes(code)) return tg.showAlert("Уже использован!");
-                usedPromos.push(code);
-                balance += 50;
-                updateUI();
-                tg.showAlert("Успешно! +50 NC");
-            } else {
-                tg.showAlert("Неверный код");
-            }
+        function closeCase() {
+            document.getElementById('caseModal').style.display = 'none';
         }
 
         function startSpin(price, type) {
@@ -175,7 +190,9 @@
             balance -= price;
             updateUI();
             
-            document.getElementById('rouletteBlock').style.display = 'block';
+            const btn = document.getElementById('modalSpinBtn');
+            btn.disabled = true;
+
             const line = document.getElementById('line');
             line.innerHTML = '';
             line.style.transition = 'none';
@@ -184,12 +201,14 @@
             let win = skins.empty;
             let r = Math.random() * 100;
 
-            if(type === 'poor') { if(r < 0.01) win = skins.ak; }
+            if(type === 'poor') { if(r < 0.001) win = skins.ak; }
             if(type === 'norm') { if(r < 3) win = skins.ak; if(r < 0.5) win = skins.knife; }
             if(type === 'rich') { win = skins.knife; }
 
+            // Наполняем рулетку скинами именно этого кейса
+            let pool = config[type].drop;
             for(let i=0; i<60; i++) {
-                let s = (i === 55) ? win : (Math.random() > 0.9 ? skins.ak : skins.empty);
+                let s = (i === 55) ? win : pool[Math.floor(Math.random()*pool.length)];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
             }
 
@@ -199,6 +218,7 @@
             }, 50);
 
             setTimeout(() => {
+                btn.disabled = false;
                 if (win.id !== 1) {
                     inventory.push(win);
                     tg.showAlert("ВЫПАЛО: " + win.name);
@@ -209,6 +229,15 @@
             }, 5500);
         }
 
+        function applyPromo() {
+            let code = document.getElementById('promoInput').value.toUpperCase();
+            if(["CYGAN", "MARMIX", "WELCOME"].includes(code)) {
+                if(usedPromos.includes(code)) return tg.showAlert("Использован!");
+                usedPromos.push(code); balance += 50; updateUI();
+                tg.showAlert("+50 NC");
+            } else tg.showAlert("Неверный код");
+        }
+
         function renderInventory() {
             const grid = document.getElementById('inventoryGrid');
             grid.innerHTML = inventory.length ? '' : 'Пусто';
@@ -217,11 +246,21 @@
             });
         }
 
-        function topUp() {
-            let s = document.getElementById('starsIn').value;
-            tg.showConfirm(`Купить ${s*100} NC за ${s} ⭐️?`, (ok) => {
-                if(ok) { balance += s*100; updateUI(); }
-            });
+        function copyRef() {
+            navigator.clipboard.writeText(document.getElementById('refLink').value);
+            tg.showAlert("Скопировано!");
+        }
+
+        function calcNC() {
+            let v = document.getElementById('starsIn').value;
+            document.getElementById('ncOut').value = v * 100;
+            document.getElementById('starVal').innerText = v;
+        }
+
+        function calcStars() {
+            let v = document.getElementById('ncOut').value;
+            document.getElementById('starsIn').value = v / 100;
+            document.getElementById('starVal').innerText = v / 100;
         }
 
         updateUI();
