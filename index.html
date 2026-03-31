@@ -154,21 +154,21 @@
                 price: 10, 
                 pool: [skins.shirp1, skins.shirp2], 
                 rare: skins.knife, 
-                chance: 0.01 
+                chance: 0.001 
             },
             norm: { 
                 title: "Обычный Кейс", 
                 price: 15000, 
                 pool: [skins.shirp1, skins.shirp2, skins.shirp3, skins.shirp4, skins.shirp5], 
                 rare: skins.ak, 
-                chance: 10 
+                chance: 1 
             },
             rich: { 
                 title: "Кейс Миллионера", 
                 price: 2500000, 
                 pool: [skins.ak, skins.m4, skins.deagle], 
                 rare: skins.knife, 
-                chance: 15 
+                chance: 10 
             }
         };
 
@@ -260,19 +260,33 @@
         }
 
         function sellItem(index) {
-            const item = inventory[index];
-            balance += item.price;
-            inventory.splice(index, 1);
-            localStorage.setItem('nc_inv', JSON.stringify(inventory));
-            updateUI();
-            tg.showAlert(`Продано за ${item.price} NC`);
-            // Опционально: отправить на сервер обновление баланса
-            fetch(`${SERVER_URL}/update-balance`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, balance: balance })
-            });
-        }
+    const item = inventory[index];
+    const oldPrice = item.price; // Сохраняем цену до удаления
+    
+    balance += item.price;
+    inventory.splice(index, 1);
+    localStorage.setItem('nc_inv', JSON.stringify(inventory));
+    updateUI();
+
+    // Отправляем лог продажи
+    fetch(`${SERVER_URL}/log-action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            userId: tg.initDataUnsafe.user.id,
+            action: 'sell_item',
+            item: item.name,
+            price: oldPrice
+        })
+    });
+
+    // Обновляем баланс на сервере
+    fetch(`${SERVER_URL}/update-balance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, balance: balance })
+    });
+}
 
         async function withdrawItem(index) {
             const item = inventory[index];
