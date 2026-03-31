@@ -44,6 +44,11 @@
         .nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #151515; border-top: 1px solid #333; display: flex; z-index: 50; }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; }
         .nav-item.active { color: #ffca28; }
+
+        /* Твои новые кнопки выбора */
+        .stars-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+        .star-btn { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; cursor: pointer; }
+        .star-btn:active { background: #ffca28; color: black; }
     </style>
 </head>
 <body>
@@ -72,29 +77,31 @@
             <div id="userTitle" style="font-weight: bold; font-size: 1.1rem;">👤 Пользователь</div>
             <div id="userIdDisplay" style="font-size:12px; color:gray">ID: ---</div>
         </div>
-
         <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Промокод</label>
             <input type="text" id="promoInput" placeholder="Введите код">
             <button class="btn-main" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
         </div>
-
         <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Реферальная ссылка</label>
             <input type="text" id="refLink" readonly>
             <button class="btn-sec" onclick="copyRef()">КОПИРОВАТЬ</button>
         </div>
-
         <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Вывод средств</label>
             <div style="margin-top: 10px; color: #eb4b4b; font-weight: bold;">вывод пока что не доступен</div>
         </div>
-
         <h3>Инвентарь</h3>
         <div id="inventoryGrid" class="inv-grid"></div>
     </div>
 
     <div id="page-shop" class="page">
+        <div class="stars-grid">
+            <button class="star-btn" onclick="setStars(10)">⭐ 10</button>
+            <button class="star-btn" onclick="setStars(25)">⭐ 25</button>
+            <button class="star-btn" onclick="setStars(50)">⭐ 50</button>
+            <button class="star-btn" onclick="setStars(100)">⭐ 100</button>
+        </div>
         <div class="swap-box">
             <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:60px"> ➔ <span id="ncOut">1000</span> NC
         </div>
@@ -108,6 +115,9 @@
     </nav>
 
     <script>
+        // --- НАСТРОЙКИ СЕРВЕРА ---
+        const SERVER_URL = 'ССЫЛКА_ИЗ_NGROK'; // Сюда вставь ссылку из Forwarding в ngrok
+
         let tg = window.Telegram.WebApp;
         tg.expand();
 
@@ -148,7 +158,18 @@
         function nav(page) {
             document.querySelectorAll('.page, .nav-item').forEach(e => e.classList.remove('active'));
             document.getElementById('page-' + page).classList.add('active');
-            event.currentTarget.classList.add('active');
+            if(event) event.currentTarget.classList.add('active');
+        }
+
+        function setStars(amount) {
+            document.getElementById('starsIn').value = amount;
+            calcNC();
+        }
+
+        function calcNC() {
+            let v = document.getElementById('starsIn').value;
+            document.getElementById('ncOut').innerText = v * 100;
+            document.getElementById('starVal').innerText = v;
         }
 
         function openCase(type) {
@@ -203,21 +224,19 @@
             tg.showConfirm(`Вы действительно хотите купить ${starsCount * 100} NC за ${starsCount} звёзд?`, async (confirm) => {
                 if (confirm) {
                     try {
-                        let response = await fetch('https://твой-сервер.com/create-stars-invoice', {
+                        let response = await fetch(`${SERVER_URL}/create-invoice`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ user_id: tg.initDataUnsafe.user?.id, stars: starsCount })
+                            body: JSON.stringify({ userId: tg.initDataUnsafe.user?.id, stars: starsCount })
                         });
                         let data = await response.json();
-                        if (data.invoice_url) {
-                            tg.openInvoice(data.invoice_url, (status) => {
-                                if (status === 'paid') tg.showAlert("Оплата успешно завершена!");
+                        if (data.url) {
+                            tg.openInvoice(data.url, (status) => {
+                                if (status === 'paid') tg.showAlert("Оплата завершена! Ожидайте начисления.");
                             });
-                        } else {
-                            tg.showAlert("Ошибка: Сервер не вернул ссылку на оплату.");
                         }
                     } catch (e) {
-                        tg.showAlert("Бэкенд не подключен. Настройте сервер для приема платежей.");
+                        tg.showAlert("Ошибка связи с сервером!");
                     }
                 }
             });
@@ -243,12 +262,6 @@
             const grid = document.getElementById('inventoryGrid');
             grid.innerHTML = inventory.length ? '' : 'Инвентарь пуст';
             inventory.forEach(i => grid.innerHTML += `<div class="item ${i.color}" style="height:80px;"><img src="${i.img}"></div>`);
-        }
-
-        function calcNC() {
-            let v = document.getElementById('starsIn').value;
-            document.getElementById('ncOut').innerText = v * 100;
-            document.getElementById('starVal').innerText = v;
         }
 
         if(tg.initDataUnsafe.user) {
