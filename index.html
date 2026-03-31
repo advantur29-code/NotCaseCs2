@@ -33,14 +33,13 @@
 
         .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; }
         .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-star { background: #4b69ff; color: white; border: none; padding: 10px; border-radius: 8px; flex: 1; font-weight: bold; }
+        .btn-sec { width: 100%; background: #333; color: white; border: none; padding: 10px; border-radius: 8px; margin-top: 5px; cursor: pointer; }
 
-        .profile-section { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        .profile-section { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #222; }
         .inv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
         input { background: #111; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; width: calc(100% - 22px); margin: 5px 0; }
 
         .swap-box { background: #1a1a1a; padding: 20px; border-radius: 15px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; }
-        .swap-input-container { background: #222; padding: 10px; border-radius: 10px; display: flex; align-items: center; gap: 8px; border: 1px solid #333; }
 
         .nav { position: fixed; bottom: 0; width: 100%; height: 65px; background: #151515; border-top: 1px solid #333; display: flex; z-index: 50; }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; }
@@ -64,14 +63,35 @@
 
     <div id="page-cases" class="page active">
         <div class="case-card" onclick="openCase('poor')"><h3>📦 Бомж-Кейс</h3><div style="color:gold">10 NC</div></div>
-        <div class="case-card" onclick="openCase('norm')"><h3>📦 Обычный Кейс</h3><div style="color:gold">100 NC</div></div>
+        <div class="case-card" onclick="openCase('norm')"><h3>📦 Обычный Кейс</h3><div style="color:gold">5000 NC</div></div>
         <div class="case-card" onclick="openCase('rich')"><h3>👑 Кейс Миллионера</h3><div style="color:gold">2,500,000 NC</div></div>
     </div>
 
     <div id="page-profile" class="page">
-        <div class="profile-section"><div id="userTitle">👤 Пользователь</div><div id="userIdDisplay" style="font-size:12px; color:gray">ID: ---</div></div>
-        <div class="profile-section"><input type="text" id="promoInput" placeholder="Промокод"><button class="btn-main" onclick="applyPromo()">АКТИВИРОВАТЬ</button></div>
-        <h3>Инвентарь</h3><div id="inventoryGrid" class="inv-grid"></div>
+        <div class="profile-section">
+            <div id="userTitle" style="font-weight: bold; font-size: 1.1rem;">👤 Пользователь</div>
+            <div id="userIdDisplay" style="font-size:12px; color:gray">ID: ---</div>
+        </div>
+
+        <div class="profile-section">
+            <label style="font-size: 13px; color: #aaa;">Промокод</label>
+            <input type="text" id="promoInput" placeholder="Введите код">
+            <button class="btn-main" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
+        </div>
+
+        <div class="profile-section">
+            <label style="font-size: 13px; color: #aaa;">Реферальная ссылка</label>
+            <input type="text" id="refLink" readonly>
+            <button class="btn-sec" onclick="copyRef()">КОПИРОВАТЬ</button>
+        </div>
+
+        <div class="profile-section">
+            <label style="font-size: 13px; color: #aaa;">Вывод средств</label>
+            <div style="margin-top: 10px; color: #eb4b4b; font-weight: bold;">Вывод пока что не доступен</div>
+        </div>
+
+        <h3>Инвентарь</h3>
+        <div id="inventoryGrid" class="inv-grid"></div>
     </div>
 
     <div id="page-shop" class="page">
@@ -89,6 +109,8 @@
 
     <script>
         let tg = window.Telegram.WebApp;
+        tg.expand();
+
         let balance = parseInt(localStorage.getItem('nc_balance')) || 100;
         let inventory = JSON.parse(localStorage.getItem('nc_inv')) || [];
         let usedPromos = JSON.parse(localStorage.getItem('nc_promos')) || [];
@@ -111,7 +133,7 @@
 
         const config = {
             poor: { title: "Бомж-Кейс", price: 10, pool: [skins.empty], rare: skins.deagle, chance: 0.0001 },
-            norm: { title: "Обычный Кейс", price: 100, pool: [skins.sg, skins.ssg, skins.mp5, skins.mac10, skins.sawed], rare: skins.ak, chance: 0.5 },
+            norm: { title: "Обычный Кейс", price: 5000, pool: [skins.sg, skins.ssg, skins.mp5, skins.mac10, skins.sawed], rare: skins.ak, chance: 0.5 },
             rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.knife1, skins.knife2, skins.knife3, skins.knife4], rare: skins.knife5, chance: 10 }
         };
 
@@ -119,6 +141,7 @@
             document.getElementById('balanceDisplay').innerText = balance + " NC";
             localStorage.setItem('nc_balance', balance);
             localStorage.setItem('nc_inv', JSON.stringify(inventory));
+            localStorage.setItem('nc_promos', JSON.stringify(usedPromos));
             renderInventory();
         }
 
@@ -135,7 +158,6 @@
             document.getElementById('modalSpinBtn').onclick = () => startSpin(c.price, type);
             document.getElementById('caseModal').style.display = 'block';
             
-            // Предпросмотр линии (заполняем рулетку перед стартом)
             const line = document.getElementById('line');
             line.innerHTML = '';
             for(let i=0; i<10; i++) {
@@ -159,7 +181,6 @@
             let win = c.pool[Math.floor(Math.random() * c.pool.length)];
             if(Math.random() * 100 < c.chance) win = c.rare;
 
-            // Наполняем рулетку (60 элементов)
             for(let i=0; i<60; i++) {
                 let s = (i === 55) ? win : c.pool[Math.floor(Math.random() * c.pool.length)];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
@@ -177,6 +198,22 @@
             }, 5500);
         }
 
+        function applyPromo() {
+            let code = document.getElementById('promoInput').value.toUpperCase();
+            if(["CYGAN", "WELCOME"].includes(code)) {
+                if(usedPromos.includes(code)) return tg.showAlert("Уже использован!");
+                usedPromos.push(code); balance += 500; updateUI();
+                tg.showAlert("Промокод активирован! +500 NC");
+            } else tg.showAlert("Неверный код");
+        }
+
+        function copyRef() {
+            let copyText = document.getElementById("refLink");
+            copyText.select();
+            document.execCommand("copy");
+            tg.showAlert("Ссылка скопирована!");
+        }
+
         function renderInventory() {
             const grid = document.getElementById('inventoryGrid');
             grid.innerHTML = inventory.length ? '' : 'Инвентарь пуст';
@@ -187,6 +224,13 @@
             let v = document.getElementById('starsIn').value;
             document.getElementById('ncOut').innerText = v * 100;
             document.getElementById('starVal').innerText = v;
+        }
+
+        // Инициализация данных пользователя
+        if(tg.initDataUnsafe.user) {
+            document.getElementById('userTitle').innerText = "👤 " + tg.initDataUnsafe.user.first_name;
+            document.getElementById('userIdDisplay').innerText = "ID: " + tg.initDataUnsafe.user.id;
+            document.getElementById('refLink').value = "https://t.me/notcasecs2_bot?start=" + tg.initDataUnsafe.user.id;
         }
 
         updateUI();
