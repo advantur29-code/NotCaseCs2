@@ -20,12 +20,11 @@
 
         .roulette-wrapper { position: relative; width: 100%; height: 130px; background: #151515; border: 2px solid #333; overflow: hidden; margin: 20px 0; }
         .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #ffca28; z-index: 10; transform: translateX(-50%); }
-        .cases-line { display: flex; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); padding-left: 50%; }
+        .cases-line { display: flex; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); padding-left: 50%; will-change: transform; }
         
         .item { min-width: 100px; height: 100px; margin: 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         .item img { width: 60px; height: auto; object-fit: contain; }
         
-        /* Цвета редкости */
         .item.empty { border-color: var(--gray); }
         .item.blue { border-color: var(--blue); }
         .item.purple { border-color: var(--purple); }
@@ -34,7 +33,7 @@
         .item.gold { border-color: var(--gold); }
 
         .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; }
-        .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-withdraw { background: #eb4b4b; color: white; border: none; font-size: 10px; padding: 4px; border-radius: 4px; margin-top: 5px; cursor: pointer; width: 90%; }
 
         .profile-section { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #222; }
@@ -81,9 +80,9 @@
             <button class="btn-main" onclick="saveTradeLink()">СОХРАНИТЬ ССЫЛКУ</button>
         </div>
         <div class="profile-section">
-            <label style="font-size: 13px; color: #aaa;">Промокод</label>
-            <input type="text" id="promoInput" placeholder="WELCOME">
-            <button class="btn-main" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
+            <label style="font-size: 13px; color: #aaa;">Твоя реферальная ссылка</label>
+            <input type="text" id="refLink" readonly onclick="this.select()">
+            <p style="font-size: 10px; color: #777;">+500 NC за каждого друга</p>
         </div>
         <h3>Инвентарь</h3>
         <div id="inventoryGrid" class="inv-grid"></div>
@@ -112,11 +111,10 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        const SERVER_URL = 'https://supercrowned-siphonless-shawanna.ngrok-free.dev'; // ПРОВЕРЬ ССЫЛКУ!
+        const SERVER_URL = 'https://supercrowned-siphonless-shawanna.ngrok-free.dev'; 
         let balance = 0;
         let inventory = JSON.parse(localStorage.getItem('nc_inv')) || [];
 
-        // Скины
         const skins = {
             empty: { name: "Ничего", color: "empty", img: "not.png" },
             ak: { name: "AK-47 | Redline", color: "red", img: "ak.png" },
@@ -130,11 +128,11 @@
             rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.ak], rare: skins.knife, chance: 20 }
         };
 
-        // --- СИНХРОНИЗАЦИЯ ---
+        const allSkinsList = Object.values(skins);
+
         async function syncWithServer() {
             const user = tg.initDataUnsafe.user;
             if(!user) return;
-            
             try {
                 const response = await fetch(`${SERVER_URL}/sync-user`, {
                     method: 'POST',
@@ -153,19 +151,13 @@
             renderInventory();
         }
 
-        // --- НАВИГАЦИЯ ---
         function nav(pageId) {
-            // Скрываем все страницы
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            // Убираем активный класс у кнопок
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            
-            // Показываем нужную
             document.getElementById('page-' + pageId).classList.add('active');
             document.getElementById('nav-' + pageId).classList.add('active');
         }
 
-        // --- МАГАЗИН ---
         function setStars(val) { document.getElementById('starsIn').value = val; calcNC(); }
         function calcNC() {
             let v = document.getElementById('starsIn').value;
@@ -183,7 +175,6 @@
             if (data.url) tg.openInvoice(data.url, (status) => { if(status === 'paid') syncWithServer(); });
         }
 
-        // --- ПРОФИЛЬ ---
         async function saveTradeLink() {
             const link = document.getElementById('tradeLinkInput').value;
             await fetch(`${SERVER_URL}/save-trade`, {
@@ -214,25 +205,24 @@
                 body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, item: item.name })
             });
             if(res.ok) {
-                tg.showAlert("Заявка на " + item.name + " отправлена админу!");
+                tg.showAlert("Заявка на " + item.name + " отправлена!");
                 inventory.splice(index, 1);
                 localStorage.setItem('nc_inv', JSON.stringify(inventory));
                 renderInventory();
             }
         }
 
-        // --- КЕЙСЫ (ЛОГИКА) ---
         function openCase(type) {
             let c = config[type];
             document.getElementById('modalTitle').innerText = c.title;
-            document.getElementById('modalPrice').innerText = "Цена: " + c.price + " NC";
+            document.getElementById('modalPrice').innerText = "Цена: " + c.price.toLocaleString() + " NC";
             document.getElementById('modalSpinBtn').onclick = () => startSpin(c.price, type);
             document.getElementById('caseModal').style.display = 'block';
             
             const line = document.getElementById('line');
             line.innerHTML = '';
-            for(let i=0; i<10; i++) {
-                let s = c.pool[Math.floor(Math.random() * c.pool.length)];
+            for(let i=0; i<15; i++) {
+                let s = allSkinsList[Math.floor(Math.random() * allSkinsList.length)];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
             }
         }
@@ -241,7 +231,11 @@
 
         function startSpin(price, type) {
             if (balance < price) return tg.showAlert("Мало NC!");
-            balance -= price; updateUI(); // Снимаем баланс локально для красоты
+            
+            const btn = document.getElementById('modalSpinBtn');
+            btn.disabled = true;
+            balance -= price; 
+            updateUI();
             
             const line = document.getElementById('line');
             line.style.transition = 'none';
@@ -251,14 +245,24 @@
             let c = config[type];
             let win = (Math.random() * 100 < c.chance) ? c.rare : c.pool[Math.floor(Math.random() * c.pool.length)];
 
-            for(let i=0; i<60; i++) {
-                let s = (i === 55) ? win : (c.pool[Math.floor(Math.random() * c.pool.length)]);
+            // Создаем 60 элементов для длинной прокрутки
+            for(let i=0; i<65; i++) {
+                let s;
+                if (i === 55) {
+                    s = win; // Наш приз ровно под стрелкой в конце
+                } else {
+                    s = allSkinsList[Math.floor(Math.random() * allSkinsList.length)];
+                }
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
             }
 
+            // Запуск анимации
             setTimeout(() => {
                 line.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
-                line.style.transform = `translateX(-${55 * 110 - 20}px)`;
+                const itemWidth = 110; // 100px + 10px margin
+                const centerOffset = line.parentElement.offsetWidth / 2;
+                const finalPosition = (55 * itemWidth) + (itemWidth / 2) - centerOffset;
+                line.style.transform = `translateX(-${finalPosition}px)`;
             }, 50);
 
             setTimeout(() => {
@@ -266,15 +270,18 @@
                     inventory.push(win); 
                     localStorage.setItem('nc_inv', JSON.stringify(inventory));
                     tg.showAlert("ВЫПАЛО: " + win.name); 
+                } else {
+                    tg.showAlert("Увы, ничего не выпало.");
                 }
-                syncWithServer(); // Обновляем баланс с сервера
+                btn.disabled = false;
+                syncWithServer();
             }, 5500);
         }
 
-        // Инициализация
         if(tg.initDataUnsafe.user) {
             document.getElementById('userTitle').innerText = "👤 " + tg.initDataUnsafe.user.first_name;
             document.getElementById('userIdDisplay').innerText = "ID: " + tg.initDataUnsafe.user.id;
+            document.getElementById('refLink').value = "https://t.me/NotCaseBot?start=" + tg.initDataUnsafe.user.id;
             syncWithServer();
         }
     </script>
