@@ -137,11 +137,76 @@
             knife: { name: "Karambit", color: "gold", img: "4knife.png", price: 2500000 }
         };
 
-        const config = {
-            poor: { title: "Все или ничего", price: 10, pool: [skins.shirp1, skins.shirp2], rare: skins.knife, chance: 0.01 },
-            norm: { title: "Обычный Кейс", price: 15000, pool: [skins.shirp1, skins.shirp2, skins.shirp3, skins.shirp4, skins.shirp5], rare: skins.ak, chance: 1 },
-            rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.ak, skins.m4, skins.deagle], rare: skins.knife, chance: 10 }
-        };
+        // ... (начало кода skins остается прежним)
+
+const config = {
+    // Шанс 0 — значит выпадет только skins.empty
+    poor: { title: "Все или ничего", price: 10, pool: [skins.shirp1], rare: skins.knife, chance: 0 }, 
+    // Шанс 0.1% на редкий дроп (skins.ak)
+    norm: { title: "Обычный Кейс", price: 15000, pool: [skins.shirp1, skins.shirp2, skins.shirp3, skins.shirp4, skins.shirp5], rare: skins.ak, chance: 0.1 },
+    rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.ak, skins.m4, skins.deagle], rare: skins.knife, chance: 10 }
+};
+
+// ... (функции sync, UI, nav остаются прежними)
+
+function startSpin(price, type) {
+    if (balance < price) return tg.showAlert("Мало NC!");
+    
+    const btn = document.getElementById('modalSpinBtn');
+    if(btn.disabled) return;
+    
+    btn.disabled = true;
+    balance -= price; 
+    updateUI();
+    fastSaveBalance();
+
+    const line = document.getElementById('line');
+    line.innerHTML = '';
+
+    let c = config[type];
+    let roll = Math.random() * 100; // Генерируем число от 0 до 100
+    
+    let win;
+    // ЛОГИКА ШАНСОВ
+    if (type === 'poor') {
+        win = skins.empty; // В бомж-кейсе всегда пусто
+    } else {
+        // Если ролл меньше или равен шансу (например 0.1), даем rare, иначе ширп
+        win = (roll <= c.chance) ? c.rare : c.pool[Math.floor(Math.random() * c.pool.length)];
+    }
+
+    const totalItems = 60;
+    const winIndex = 55;
+    // Наполняем ленту для визуализации
+    let spinPool = [...c.pool, c.rare, skins.empty];
+
+    for(let i=0; i<totalItems; i++) {
+        // В winIndex подставляем наш заранее определенный win
+        let s = (i === winIndex) ? win : spinPool[Math.floor(Math.random() * spinPool.length)];
+        line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
+    }
+
+    // ... (дальше идет setTimeout для анимации и показа Alert — они остаются как были)
+    setTimeout(() => {
+        line.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
+        const itemWidth = 110; 
+        const wrapperWidth = document.querySelector('.roulette-wrapper').offsetWidth;
+        const finalPosition = (winIndex * itemWidth) + (itemWidth / 2) - (wrapperWidth / 2);
+        line.style.transform = `translateX(-${finalPosition}px)`;
+    }, 50);
+
+    setTimeout(() => {
+        if (win.name !== "Ничего") { 
+            inventory.push(win); 
+            localStorage.setItem('nc_inv', JSON.stringify(inventory));
+            tg.showAlert("ВЫПАЛО: " + win.name); 
+        } else {
+            tg.showAlert("Увы, ничего не выпало. Попробуй еще раз!");
+        }
+        btn.disabled = false;
+        updateUI();
+    }, 5500);
+}
 
         async function syncWithServer() {
             const user = tg.initDataUnsafe.user;
