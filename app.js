@@ -172,7 +172,45 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`🚀 СЕРВЕР ЗАПУЩЕН НА ПОРТУ ${PORT}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    // 1. Этот обработчик ОБЯЗАТЕЛЕН. Без него кнопка "Оплатить" в Telegram будет выдавать ошибку
+    bot.on('pre_checkout_query', async (ctx) => {
+        console.log(`[CHECKOUT] Проверка платежа от @${ctx.from.username}...`);
+        try {
+            await ctx.answerPreCheckoutQuery(true);
+            console.log(`[CHECKOUT] Разрешение дано!`);
+        } catch (e) {
+            console.error("❌ Ошибка PreCheckout:", e);
+        }
+    });
 
+    // 2. Этот блок сработает ТОЛЬКО после того, как юзер ввел пароль и Telegram списал звезды
+    bot.on('successful_payment', async (ctx) => {
+        try {
+            const payment = ctx.message.successful_payment;
+            const payload = JSON.parse(payment.invoice_payload);
+            const userId = payload.uId;
+            const starsAmount = payment.total_amount; // Количество звезд
+            const bonusNC = starsAmount * 100; // Твой курс: 1 звезда = 100 NC
+
+            if (users[userId]) {
+                users[userId].balance += bonusNC;
+                saveDB();
+
+                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`💰 УСПЕШНАЯ ОПЛАТА!`);
+                console.log(`Юзер: @${users[userId].username} (ID: ${userId})`);
+                console.log(`Списано: ${starsAmount} ⭐ | Начислено: ${bonusNC} NC`);
+                console.log(`Новый баланс: ${users[userId].balance} NC`);
+                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+                await ctx.reply(`✅ Оплата прошла! На ваш баланс зачислено ${bonusNC.toLocaleString()} NC. Приятной игры!`);
+            } else {
+                console.error(`[!] Ошибка: Юзер ${userId} не найден в базе при оплате!`);
+            }
+        } catch (e) {
+            console.error("❌ Критическая ошибка при обработке успешного платежа:", e);
+        }
+    });
     bot.launch()
         .then(() => console.log('🤖 Бот успешно запущен в Telegram'))
         .catch(err => console.error('❌ Ошибка старта бота:', err));
