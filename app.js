@@ -110,26 +110,25 @@ app.post('/create-invoice', async (req, res) => {
     const { userId, stars } = req.body;
     const amount = parseInt(stars);
 
-    if (!userId || isNaN(amount)) return res.status(400).json({ error: "Invalid data" });
+    if (!userId || isNaN(amount)) return res.status(400).json({ error: "Ошибка данных" });
 
     try {
-        // Создаем инвойс через Telegram
-        const invoice = await bot.telegram.createInvoiceLink(
-            "Пополнение баланса NotCase", // Название
-            `Покупка ${amount * 100} NC через Telegram Stars`, // Описание
-            JSON.stringify({ userId: userId.toString(), amount: amount }), // Полезная нагрузка (payload)
-            "", // Токен провайдера (для Stars оставляем пустым)
-            "XTR", // Валюта Stars
-            [{ label: "NC Coins", amount: amount }] // Цена в звездах
+        // Создаем ссылку на оплату через Telegram Stars
+        const invoiceLink = await bot.telegram.createInvoiceLink(
+            "Пополнение NotCase",
+            `Покупка ${amount * 100} NC`,
+            JSON.stringify({ uId: userId.toString(), amt: amount }), // Payload
+            "", // Токен пустой для Stars
+            "XTR",
+            [{ label: "Stars", amount: amount }]
         );
 
-        console.log(`[STARS] Инвойс создан для @${users[userId]?.username}: ${invoice}`);
-        res.json({ url: invoice }); // Возвращаем ссылку в HTML
+        res.json({ url: invoiceLink }); // Отправляем ссылку обратно в WebApp
     } catch (e) {
-        console.error("❌ Ошибка создания инвойса:", e);
-        res.status(500).json({ error: "Ошибка платежной системы" });
+        console.error("Ошибка счета:", e);
+        res.status(500).json({ error: "Ошибка создания счета" });
     }
-}); 
+});
 
 // --- ТЕЛЕГРАМ БОТ ---
 bot.start((ctx) => {
