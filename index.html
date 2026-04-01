@@ -263,15 +263,45 @@ function startSpin(price, type) {
         }
 
         async function topUp() {
-            let starsCount = parseInt(document.getElementById('starsIn').value);
-            let response = await fetch(`${SERVER_URL}/create-invoice`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: tg.initDataUnsafe.user?.id, stars: starsCount })
+    const user = tg.initDataUnsafe.user;
+    if (!user) return tg.showAlert("Ошибка: Данные пользователя не найдены!");
+
+    let starsCount = parseInt(document.getElementById('starsIn').value);
+    if (isNaN(starsCount) || starsCount < 1) return tg.showAlert("Введите число звезд!");
+
+    try {
+        console.log("Отправка запроса на счет...");
+        let response = await fetch(`${SERVER_URL}/create-invoice`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                userId: user.id.toString(), // Передаем как строку
+                stars: starsCount 
+            })
+        });
+
+        let data = await response.json();
+
+        if (data.url) {
+            console.log("Ссылка получена, открываю инвойс...");
+            tg.openInvoice(data.url, (status) => {
+                if (status === 'paid') {
+                    tg.showAlert("Оплата успешна! Баланс обновится через секунду.");
+                    setTimeout(syncWithServer, 2000); // Даем серверу время записать БД
+                } else if (status === 'cancelled') {
+                    tg.showAlert("Оплата отменена.");
+                } else {
+                    tg.showAlert("Статус оплаты: " + status);
+                }
             });
-            let data = await response.json();
-            if (data.url) tg.openInvoice(data.url, (status) => { if(status === 'paid') syncWithServer(); });
+        } else {
+            tg.showAlert("Ошибка сервера: " + (data.error || "Не удалось создать ссылку"));
         }
+    } catch (e) {
+        console.error("Критическая ошибка фронтенда:", e);
+        tg.showAlert("Нет связи с сервером. Проверь консоль.");
+    }
+}
 
         async function saveTradeLink() {
             const link = document.getElementById('tradeLinkInput').value;
