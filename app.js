@@ -20,106 +20,79 @@ if (fs.existsSync(DB_FILE)) {
         users = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
         console.log(`✅ БАЗА ЗАГРУЖЕНА: ${Object.keys(users).length} юзеров`);
     } catch (e) {
-        console.log("❌ Ошибка базы, создаем новую");
+        console.log("❌ Ошибка базы");
         users = {};
     }
 }
 
 const saveDB = () => fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
-let activeSessions = new Set();
 
-// --- ОБРАБОТКА ПЛАТЕЖЕЙ STARS (ВЫНЕСЕНО ИЗ LISTEN) ---
+// --- ОБРАБОТКА ПЛАТЕЖЕЙ STARS ---
 
-// 1. Подтверждение (PreCheckout)
+// 1. Подтверждение (ОБЯЗАТЕЛЬНО для появления синей кнопки)
 bot.on('pre_checkout_query', async (ctx) => {
     try {
         await ctx.answerPreCheckoutQuery(true);
-        console.log(`[STARS] Проверка платежа для @${ctx.from.username} - OK`);
+        console.log(`[STARS] PreCheckout OK для @${ctx.from.username}`);
     } catch (e) {
         console.error("❌ Ошибка PreCheckout:", e);
     }
 });
 
-// 2. Успешная оплата
+// 2. Успешная оплата (начисление монет)
 bot.on('successful_payment', async (ctx) => {
     try {
         const payment = ctx.message.successful_payment;
-        const payload = JSON.parse(payment.invoice_payload);
-        const userId = payload.uId;
+        // Мы передавали userId как payload строку
+        const userId = payment.invoice_payload;
         const starsAmount = payment.total_amount;
         const bonusNC = starsAmount * 100;
 
         if (users[userId]) {
             users[userId].balance += bonusNC;
             saveDB();
-            console.log(`💰 ОПЛАТА: @${users[userId].username} +${bonusNC} NC`);
-            await ctx.reply(`💎 Успешно! Зачислено ${bonusNC.toLocaleString()} NC.\nБаланс: ${users[userId].balance.toLocaleString()} NC`);
+            console.log(`💰 ОПЛАТА ЗАЧИСЛЕНА: @${users[userId].username} +${bonusNC} NC`);
+            await ctx.reply(`✅ Успешно! Зачислено ${bonusNC.toLocaleString()} NC.\nБаланс: ${users[userId].balance.toLocaleString()} NC`);
         }
     } catch (e) {
-        console.error("❌ Ошибка обработки платежа:", e);
+        console.error("❌ Ошибка в successful_payment:", e);
     }
 });
 
-// --- КОМАНДЫ БОТА ---
-
+// --- КОМАНДЫ ---
 bot.start((ctx) => {
     const userId = ctx.from.id.toString();
     if (!users[userId]) {
-        users[userId] = {
-            username: ctx.from.username || 'unknown',
-            balance: 1000000, // 1 апреля!
-            tradeLink: '',
-            withdrawRequests: [],
-            usedPromos: []
-        };
+        users[userId] = { username: ctx.from.username || 'unknown', balance: 100000, usedPromos: [] };
         saveDB();
     }
-    ctx.reply(`С 1 апреля! Твой баланс: ${users[userId].balance.toLocaleString()} NC. Удачи в кейсах! 🃏`);
+    ctx.reply(`С 1 апреля! Твой баланс: ${users[userId].balance.toLocaleString()} NC. 🃏`);
 });
 
-bot.command('setbal', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const parts = ctx.message.text.split(' ');
-    const id = parts[1];
-    const amount = parseInt(parts[2]);
-    if (users[id]) {
-        users[id].balance = amount;
-        saveDB();
-        ctx.reply(`✅ Баланс @${users[id].username} изменен на ${amount} NC`);
-    }
-});
-
-// --- API ЭНДПОИНТЫ ---
+// --- API ---
 
 app.post('/sync-user', (req, res) => {
-    const userId = req.body.userId ? req.body.userId.toString() : null;
-    const username = req.body.username || 'unknown';
+    const userId = req.body.userId?.toString();
     if (!userId) return res.status(400).send("No ID");
 
     if (!users[userId]) {
-        users[userId] = { username, balance: 1000000, tradeLink: '', withdrawRequests: [], usedPromos: [] };
-        console.log(`[НОВЫЙ ЮЗЕР] @${username}`);
-    } else {
-        users[userId].username = username;
-        if (!users[userId].usedPromos) users[userId].usedPromos = [];
+        users[userId] = { username: req.body.username || 'unknown', balance: 1000000, usedPromos: [] };
     }
     saveDB();
     res.json(users[userId]);
 });
 
 app.post('/apply-promo', (req, res) => {
-    const userId = req.body.userId ? req.body.userId.toString() : null;
+    const userId = req.body.userId?.toString();
     const promo = (req.body.promo || "").toUpperCase();
 
     if (userId && users[userId]) {
         if (!users[userId].usedPromos) users[userId].usedPromos = [];
-        if (users[userId].usedPromos.includes(promo)) {
-            return res.status(400).json({ error: 'Уже использован!' });
-        }
+        if (users[userId].usedPromos.includes(promo)) return res.status(400).json({ error: 'Уже юзал!' });
 
         let bonus = 0;
-        if (promo === 'WELCOME') bonus = 1000000;
-        if (promo === 'CYGAN') bonus = 1670; // Тот самый бонус
+        if (promo === 'WELCOME') bonus = 1000;
+        if (promo === 'CYGAN') bonus = 1670; // 1670 коинов, как просил
 
         if (bonus > 0) {
             users[userId].balance += bonus;
@@ -128,39 +101,37 @@ app.post('/apply-promo', (req, res) => {
             return res.json({ ok: true, newBalance: users[userId].balance });
         }
     }
-    res.status(400).json({ error: 'Неверный код' });
+    res.status(400).json({ error: 'Код неверный' });
 });
 
-app.post('/update-balance', (req, res) => {
-    const userId = req.body.userId ? req.body.userId.toString() : null;
-    if (userId && users[userId]) {
-        users[userId].balance = req.body.balance;
-        saveDB();
-        res.json({ success: true });
-    }
-});
-
+// ФУНКЦИЯ СОЗДАНИЯ ИНВОЙСА (ИСПРАВЛЕНА)
 app.post('/create-invoice', async (req, res) => {
     const { userId, stars } = req.body;
+    if (!userId || !stars) return res.status(400).json({ error: "Нет данных" });
+
     try {
+        const amount = parseInt(stars);
+
+        // Создаем ссылку на оплату
         const invoiceLink = await bot.telegram.createInvoiceLink(
-            "Пополнение NotCase",
-            `Покупка ${stars * 100} NC`,
-            JSON.stringify({ uId: userId.toString(), amt: parseInt(stars) }),
-            "", "XTR", [{ label: "Stars", amount: parseInt(stars) }]
+            "Обмен Stars на монеты",         // title
+            `Покупка ${amount * 100} NC`,   // description
+            userId.toString(),               // payload (просто ID строкой!)
+            "",                              // provider_token (пусто для Stars)
+            "XTR",                           // currency
+            [{ label: "Stars", amount: amount }] // prices
         );
+
+        console.log(`[LINK] Ссылка создана для ${userId} на ${amount} звезд`);
         res.json({ url: invoiceLink });
     } catch (e) {
-        res.status(500).json({ error: "Ошибка инвойса" });
+        console.error("❌ ОШИБКА TELEGRAM API:", e);
+        res.status(500).json({ error: "Telegram не принял запрос на оплату" });
     }
 });
 
-// --- ЗАПУСК ---
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 СЕРВЕР LIVE | ПОРТ ${PORT}`);
-
-    bot.launch()
-        .then(() => console.log('🤖 БОТ ЗАПУЩЕН'))
-        .catch(err => console.error('❌ ОШИБКА БОТА:', err));
+    bot.launch().then(() => console.log('🤖 БОТ ЗАПУЩЕН'));
 });
