@@ -107,29 +107,32 @@ app.post('/apply-promo', (req, res) => {
 // ФУНКЦИЯ СОЗДАНИЯ ИНВОЙСА (ИСПРАВЛЕНА)
 app.post('/create-invoice', async (req, res) => {
     const { userId, stars } = req.body;
-    if (!userId || !stars) return res.status(400).json({ error: "Нет данных" });
+
+    if (!userId || !stars) {
+        return res.status(400).json({ error: "Нет ID или суммы" });
+    }
 
     try {
         const amount = parseInt(stars);
 
-        // Создаем ссылку на оплату
-        const invoiceLink = await bot.telegram.createInvoiceLink(
-            "Обмен Stars на монеты",         // title
-            `Покупка ${amount * 100} NC`,   // description
-            userId.toString(),               // payload (просто ID строкой!)
-            "",                              // provider_token (пусто для Stars)
-            "XTR",                           // currency
-            [{ label: "Stars", amount: amount }] // prices
-        );
+        // Передаем параметры ОБЪЕКТОМ {} - это решит проблему с "title is required"
+        const invoiceLink = await bot.telegram.createInvoiceLink({
+            title: "Пополнение баланса NotCase",
+            description: `Обмен ${amount} Stars на игровые монеты NC`,
+            payload: userId.toString(),
+            provider_token: "", // Для Stars всегда пусто
+            currency: "XTR",
+            prices: [{ label: "Telegram Stars", amount: amount }]
+        });
 
-        console.log(`[LINK] Ссылка создана для ${userId} на ${amount} звезд`);
+        console.log(`✅ Ссылка создана для ${userId}`);
         res.json({ url: invoiceLink });
+
     } catch (e) {
-        console.error("❌ ОШИБКА TELEGRAM API:", e);
-        res.status(500).json({ error: "Telegram не принял запрос на оплату" });
+        console.error("❌ ОШИБКА TELEGRAM API:", e.description || e.message);
+        res.status(500).json({ error: "Ошибка создания счета" });
     }
 });
-
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 СЕРВЕР LIVE | ПОРТ ${PORT}`);
