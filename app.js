@@ -106,8 +106,29 @@ app.post('/apply-promo', (req, res) => {
 });
 
 // Добавил эндпоинт для Stars, чтобы HTML не ругался
-app.post('/create-invoice', (req, res) => {
-    res.json({ url: null });
+app.post('/create-invoice', async (req, res) => {
+    const { userId, stars } = req.body;
+    const amount = parseInt(stars);
+
+    if (!userId || isNaN(amount)) return res.status(400).json({ error: "Invalid data" });
+
+    try {
+        // Создаем инвойс через Telegram
+        const invoice = await bot.telegram.createInvoiceLink(
+            "Пополнение баланса NotCase", // Название
+            `Покупка ${amount * 100} NC через Telegram Stars`, // Описание
+            JSON.stringify({ userId: userId.toString(), amount: amount }), // Полезная нагрузка (payload)
+            "", // Токен провайдера (для Stars оставляем пустым)
+            "XTR", // Валюта Stars
+            [{ label: "NC Coins", amount: amount }] // Цена в звездах
+        );
+
+        console.log(`[STARS] Инвойс создан для @${users[userId]?.username}: ${invoice}`);
+        res.json({ url: invoice }); // Возвращаем ссылку в HTML
+    } catch (e) {
+        console.error("❌ Ошибка создания инвойса:", e);
+        res.status(500).json({ error: "Ошибка платежной системы" });
+    }
 });
 
 // --- ТЕЛЕГРАМ БОТ ---
