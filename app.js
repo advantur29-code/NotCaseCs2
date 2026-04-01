@@ -129,7 +129,7 @@ app.post('/create-invoice', async (req, res) => {
         console.error("❌ Ошибка создания инвойса:", e);
         res.status(500).json({ error: "Ошибка платежной системы" });
     }
-});
+}); 
 
 // --- ТЕЛЕГРАМ БОТ ---
 bot.start((ctx) => {
@@ -152,10 +152,15 @@ bot.command('setbal', (ctx) => {
 });
 
 // --- ЗАПУСК ---
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 10000; // Render использует 10000 по умолчанию
+
+app.listen(PORT, '0.0.0.0', () => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`🚀 СЕРВЕР LIVE НА ПОРТУ ${PORT}`);
+    console.log(`🚀 СЕРВЕР LIVE И ДОСТУПЕН`);
+    console.log(`🔗 Адрес: https://${process.env.RENDER_EXTERNAL_HOSTNAME || 'localhost'}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    bot.launch();
+
+    bot.launch()
+        .then(() => console.log('🤖 Бот в сети'))
+        .catch(err => console.error('❌ Ошибка бота:', err));
 });
