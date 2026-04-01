@@ -8,49 +8,38 @@
     <style>
         :root { --blue: #4b69ff; --purple: #8847ff; --pink: #d32ee6; --red: #eb4b4b; --gold: #caab05; --gray: #333; --bg: #0b0b0b; }
         body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding-bottom: 80px; overflow-x: hidden; height: 100vh; display: flex; flex-direction: column; }
-        
         .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #151515; border-bottom: 1px solid #333; }
         .balance { color: #ffca28; font-weight: bold; font-size: 1.1rem; }
-
         .page { display: none; flex: 1; overflow-y: auto; padding: 20px; }
         .page.active { display: block; }
-
         .case-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; padding: 20px; box-sizing: border-box; overflow-y: auto; }
         .close-modal { position: absolute; top: 20px; right: 20px; font-size: 30px; color: #666; cursor: pointer; z-index: 110; }
-
         .roulette-wrapper { position: relative; width: 100%; height: 130px; background: #151515; border: 2px solid #333; overflow: hidden; margin: 20px 0; }
         .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #ffca28; z-index: 10; transform: translateX(-50%); }
         .cases-line { display: flex; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); will-change: transform; align-items: center; height: 100%; }
-        
         .item { min-width: 100px; width: 100px; height: 100px; margin: 0 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; flex-shrink: 0; }
         .item img { width: 60px; height: auto; object-fit: contain; }
-        
         .item.empty { border-color: var(--gray); }
         .item.blue { border-color: var(--blue); }
         .item.purple { border-color: var(--purple); }
         .item.pink { border-color: var(--pink); }
         .item.red { border-color: var(--red); }
         .item.gold { border-color: var(--gold); }
-
         .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; }
         .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-withdraw, .btn-sell { color: white; border: none; font-size: 10px; padding: 4px; border-radius: 4px; margin-top: 5px; cursor: pointer; width: 90%; }
         .btn-withdraw { background: #eb4b4b; }
         .btn-sell { background: #4caf50; }
-
         .pool-preview { margin-top: 20px; border-top: 1px solid #333; padding-top: 15px; }
         .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; margin-top: 10px; }
         .pool-item { background: #1a1a1a; padding: 5px; border-radius: 4px; border-bottom: 2px solid var(--blue); text-align: center; font-size: 9px; }
         .pool-item img { width: 40px; }
-
         .profile-section { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #222; }
         .inv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
         input { background: #111; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; width: calc(100% - 22px); margin: 5px 0; }
-
         .nav { position: fixed; bottom: 0; width: 100%; height: 70px; background: #151515; border-top: 1px solid #333; display: flex; z-index: 50; }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; cursor: pointer; }
         .nav-item.active { color: #ffca28; }
-
         .stars-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
         .star-btn { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; cursor: pointer; }
     </style>
@@ -149,27 +138,9 @@
         };
 
         const config = {
-            poor: { 
-                title: "Все или ничего", 
-                price: 10, 
-                pool: [skins.shirp1, skins.shirp2], 
-                rare: skins.knife, 
-                chance: 0.001 
-            },
-            norm: { 
-                title: "Обычный Кейс", 
-                price: 15000, 
-                pool: [skins.shirp1, skins.shirp2, skins.shirp3, skins.shirp4, skins.shirp5], 
-                rare: skins.ak, 
-                chance: 1 
-            },
-            rich: { 
-                title: "Кейс Миллионера", 
-                price: 2500000, 
-                pool: [skins.ak, skins.m4, skins.deagle], 
-                rare: skins.knife, 
-                chance: 10 
-            }
+            poor: { title: "Все или ничего", price: 10, pool: [skins.shirp1, skins.shirp2], rare: skins.knife, chance: 0.01 },
+            norm: { title: "Обычный Кейс", price: 15000, pool: [skins.shirp1, skins.shirp2, skins.shirp3, skins.shirp4, skins.shirp5], rare: skins.ak, chance: 1 },
+            rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.ak, skins.m4, skins.deagle], rare: skins.knife, chance: 10 }
         };
 
         async function syncWithServer() {
@@ -179,7 +150,7 @@
                 const response = await fetch(`${SERVER_URL}/sync-user`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.id, username: user.username, balance: balance }) // Отправляем текущий баланс для синхронизации
+                    body: JSON.stringify({ userId: user.id, username: user.username }) 
                 });
                 const data = await response.json();
                 balance = data.balance;
@@ -215,11 +186,13 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, promo: code })
                 });
+                const data = await res.json();
                 if(res.ok) {
                     tg.showAlert("Промокод активирован!");
-                    syncWithServer();
+                    balance = data.newBalance;
+                    updateUI();
                 } else {
-                    tg.showAlert("Неверный или использованный промокод");
+                    tg.showAlert(data.error || "Ошибка промокода");
                 }
             } catch(e) { tg.showAlert("Ошибка сервера"); }
         }
@@ -260,33 +233,13 @@
         }
 
         function sellItem(index) {
-    const item = inventory[index];
-    const oldPrice = item.price; // Сохраняем цену до удаления
-    
-    balance += item.price;
-    inventory.splice(index, 1);
-    localStorage.setItem('nc_inv', JSON.stringify(inventory));
-    updateUI();
-
-    // Отправляем лог продажи
-    fetch(`${SERVER_URL}/log-action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            userId: tg.initDataUnsafe.user.id,
-            action: 'sell_item',
-            item: item.name,
-            price: oldPrice
-        })
-    });
-
-    // Обновляем баланс на сервере
-    fetch(`${SERVER_URL}/update-balance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, balance: balance })
-    });
-}
+            const item = inventory[index];
+            balance += item.price;
+            inventory.splice(index, 1);
+            localStorage.setItem('nc_inv', JSON.stringify(inventory));
+            updateUI();
+            fastSaveBalance();
+        }
 
         async function withdrawItem(index) {
             const item = inventory[index];
@@ -309,28 +262,21 @@
             document.getElementById('modalPrice').innerText = "Цена: " + c.price.toLocaleString() + " NC";
             document.getElementById('modalSpinBtn').onclick = () => startSpin(c.price, type);
             
-            // Настройка содержимого
             const pGrid = document.getElementById('poolGrid');
             pGrid.innerHTML = '';
             const fullPool = [...c.pool, c.rare];
             fullPool.forEach(s => {
-                pGrid.innerHTML += `
-                    <div class="pool-item ${s.color}">
-                        <img src="${s.img}" onerror="this.src='not.png'"><br>${s.name}
-                    </div>`;
+                pGrid.innerHTML += `<div class="pool-item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"><br>${s.name}</div>`;
             });
 
             document.getElementById('caseModal').style.display = 'block';
-            
             const line = document.getElementById('line');
             line.style.transition = 'none';
             line.style.transform = 'translateX(0)';
             line.innerHTML = '';
             
-            // Превью рулетки
-            let previewPool = [...c.pool, c.rare, skins.empty];
             for(let i=0; i<15; i++) {
-                let s = previewPool[Math.floor(Math.random() * previewPool.length)];
+                let s = fullPool[Math.floor(Math.random() * fullPool.length)];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
             }
         }
@@ -346,28 +292,20 @@
             btn.disabled = true;
             balance -= price; 
             updateUI();
-            
+            fastSaveBalance(); // СРАЗУ СОХРАНЯЕМ СПИСАНИЕ НА СЕРВЕРЕ
+
             const line = document.getElementById('line');
-            line.style.transition = 'none';
-            line.style.transform = 'translateX(0)';
             line.innerHTML = '';
 
             let c = config[type];
-            let win;
             let roll = Math.random() * 100;
-
-            if (type === 'poor') {
-                win = (roll <= 0.01) ? skins.knife : skins.empty;
-            } else if (type === 'norm') {
-                win = (roll <= 10) ? c.pool[Math.floor(Math.random() * c.pool.length)] : skins.empty;
-            } else {
-                win = (roll <= c.chance) ? c.rare : c.pool[Math.floor(Math.random() * c.pool.length)];
-            }
+            let win = (roll <= c.chance) ? c.rare : c.pool[Math.floor(Math.random() * c.pool.length)];
+            if (type === 'poor' && roll > c.chance) win = skins.empty;
 
             const totalItems = 60;
             const winIndex = 55;
-
             let spinPool = [...c.pool, c.rare, skins.empty];
+
             for(let i=0; i<totalItems; i++) {
                 let s = (i === winIndex) ? win : spinPool[Math.floor(Math.random() * spinPool.length)];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
@@ -375,12 +313,9 @@
 
             setTimeout(() => {
                 line.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
-                const itemWidth = 110; // 100px + 10px margin
+                const itemWidth = 110; 
                 const wrapperWidth = document.querySelector('.roulette-wrapper').offsetWidth;
-                
-                // Фикс хитбокса: (индекс * ширина) + (половина предмета для центра) - (половина обертки для выравнивания по стрелке)
                 const finalPosition = (winIndex * itemWidth) + (itemWidth / 2) - (wrapperWidth / 2);
-                
                 line.style.transform = `translateX(-${finalPosition}px)`;
             }, 50);
 
@@ -394,21 +329,17 @@
                 }
                 btn.disabled = false;
                 updateUI();
-                syncWithServer();
             }, 5500);
         }
-// Используй это после открытия кейса, чтобы сохранить баланс БЕЗ сообщения о входе
-function fastSaveBalance() {
-    fetch(`${SERVER_URL}/update-balance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            userId: tg.initDataUnsafe.user.id, 
-            balance: balance 
-        })
-    });
-}
-        // Инициализация при запуске
+
+        function fastSaveBalance() {
+            fetch(`${SERVER_URL}/update-balance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, balance: balance })
+            });
+        }
+
         function init() {
             if(tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 const user = tg.initDataUnsafe.user;
@@ -416,14 +347,10 @@ function fastSaveBalance() {
                 document.getElementById('userIdDisplay').innerText = "ID: " + user.id;
                 document.getElementById('refLink').value = "https://t.me/notcasecs2_bot?start=" + user.id;
                 syncWithServer();
-            } else {
-                // Для тестов в браузере вне телеграма
-                document.getElementById('userTitle').innerText = "👤 Тестовый режим";
             }
             updateUI();
         }
-
-        init(); // Запускаем инициализацию
+        init();
     </script>
 </body>
 </html>
