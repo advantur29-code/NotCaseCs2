@@ -6,6 +6,7 @@ const fs = require('fs');
 
 const bot = new Telegraf('8297728079:AAEubM12zGW6QYrVSRhzZCspHzFqw7tLrIM');
 const app = express();
+
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -18,13 +19,17 @@ if (fs.existsSync(DB_FILE)) {
     try {
         users = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
         console.log(`✅ БАЗА ЗАГРУЖЕНА: ${Object.keys(users).length} юзеров`);
-    } catch (e) { console.log("❌ Ошибка базы, создаем новую"); users = {}; }
+    } catch (e) {
+        console.log("❌ Ошибка базы, создаем новую");
+        users = {};
+    }
 }
 
 const saveDB = () => fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
+
 let activeSessions = new Set();
 
-// --- API ЭНДПОИНТЫ (Все твои функции тут) ---
+// --- API ЭНДПОИНТЫ ---
 
 app.post('/sync-user', (req, res) => {
     const userId = req.body.userId ? req.body.userId.toString() : null;
@@ -32,32 +37,27 @@ app.post('/sync-user', (req, res) => {
     if (!userId) return res.status(400).send("No ID");
 
     if (!users[userId]) {
-        users[userId] = { username, balance: 1000, tradeLink: '', withdrawRequests: [] };
+        // Даем 1 000 000 NC новым игрокам
+        users[userId] = {
+            username,
+            balance: 1000000,
+            tradeLink: '',
+            withdrawRequests: [],
+            usedPromos: []
+        };
         console.log(`[НОВЫЙ ЮЗЕР] @${username} (ID: ${userId})`);
     } else {
         users[userId].username = username;
+        // Проверка на старые аккаунты, у которых нет поля usedPromos
+        if (!users[userId].usedPromos) users[userId].usedPromos = [];
+
         if (!activeSessions.has(userId)) {
-            console.log(`[ВХОД] @${username} открыл WebApp | Баланс: ${users[userId].balance}`);
+            console.log(`[ВХОД] @${username} | Баланс: ${users[userId].balance}`);
             activeSessions.add(userId);
         }
     }
     saveDB();
     res.json(users[userId]);
-});
-
-app.post('/log-action', (req, res) => {
-    const userId = req.body.userId ? req.body.userId.toString() : null;
-    const { action, caseType, item, price } = req.body;
-    if (userId && users[userId]) {
-        const user = `@${users[userId].username}`;
-        const time = new Date().toLocaleTimeString();
-        if (action === 'open_case') {
-            console.log(`[КЕЙС] ${time} | ${user} открыл ${caseType} -> ${item}`);
-        } else if (action === 'sell_item') {
-            console.log(`[ПРОДАЖА] ${time} | ${user} продал ${item} за ${price} NC`);
-        }
-    }
-    res.json({ success: true });
 });
 
 app.post('/update-balance', (req, res) => {
@@ -66,46 +66,38 @@ app.post('/update-balance', (req, res) => {
         users[userId].balance = req.body.balance;
         saveDB();
         res.json({ success: true });
-    }
-});
-
-app.post('/save-trade', (req, res) => {
-    const userId = req.body.userId ? req.body.userId.toString() : null;
-    if (userId && users[userId]) {
-        users[userId].tradeLink = req.body.tradeLink;
-        saveDB();
-        console.log(`[ТРЕЙД] @${users[userId].username} обновил ссылку`);
-        res.json({ success: true });
-    }
-});
-
-app.post('/withdraw-item', (req, res) => {
-    const userId = req.body.userId ? req.body.userId.toString() : null;
-    if (userId && users[userId]) {
-        users[userId].withdrawRequests.push({ item: req.body.item, date: new Date().toLocaleString() });
-        saveDB();
-        console.log(`[ВЫВОД] @${users[userId].username} заказал ${req.body.item}`);
-        bot.telegram.sendMessage(ADMIN_ID, `📦 ЗАЯВКА: @${users[userId].username} -> ${req.body.item}`);
-        res.json({ success: true });
+    } else {
+        res.status(404).json({ error: "User not found" });
     }
 });
 
 app.post('/apply-promo', (req, res) => {
     const userId = req.body.userId ? req.body.userId.toString() : null;
     const promo = (req.body.promo || "").toUpperCase();
+
     if (userId && users[userId]) {
-        let bonus = (promo === 'WELCOME') ? 1000 : (promo === 'CYGAN' ? 1670 : 0);
+        if (!users[userId].usedPromos) users[userId].usedPromos = [];
+
+        // Проверка: использовал ли уже?
+        if (users[userId].usedPromos.includes(promo)) {
+            return res.status(400).json({ error: 'Промокод уже использован!' });
+        }
+
+        let bonus = 0;
+        if (promo === 'WELCOME') bonus = 1000000;
+        if (promo === 'CYGAN') bonus = 1670;
+
         if (bonus > 0) {
             users[userId].balance += bonus;
+            users[userId].usedPromos.push(promo); // Записываем использование
             saveDB();
-            console.log(`[ПРОМО] @${users[userId].username} +${bonus} NC`);
+            console.log(`[ПРОМО] @${users[userId].username} активировал ${promo} (+${bonus} NC)`);
             return res.json({ ok: true, newBalance: users[userId].balance });
         }
     }
-    res.status(400).json({ error: 'Ошибка промокода' });
+    res.status(400).json({ error: 'Неверный промокод' });
 });
 
-// Добавил эндпоинт для Stars, чтобы HTML не ругался
 app.post('/create-invoice', async (req, res) => {
     const { userId, stars } = req.body;
     const amount = parseInt(stars);
@@ -113,53 +105,75 @@ app.post('/create-invoice', async (req, res) => {
     if (!userId || isNaN(amount)) return res.status(400).json({ error: "Ошибка данных" });
 
     try {
-        // Создаем ссылку на оплату через Telegram Stars
         const invoiceLink = await bot.telegram.createInvoiceLink(
             "Пополнение NotCase",
             `Покупка ${amount * 100} NC`,
-            JSON.stringify({ uId: userId.toString(), amt: amount }), // Payload
-            "", // Токен пустой для Stars
+            JSON.stringify({ uId: userId.toString(), amt: amount }),
+            "",
             "XTR",
             [{ label: "Stars", amount: amount }]
         );
-
-        res.json({ url: invoiceLink }); // Отправляем ссылку обратно в WebApp
+        res.json({ url: invoiceLink });
     } catch (e) {
         console.error("Ошибка счета:", e);
         res.status(500).json({ error: "Ошибка создания счета" });
     }
 });
 
-// --- ТЕЛЕГРАМ БОТ ---
+// --- ТЕЛЕГРАМ БОТ (Платежи и Команды) ---
+
+// 1. Подтверждение платежа
+bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
+
+// 2. Начисление после успешной оплаты Stars
+bot.on('successful_payment', (ctx) => {
+    const payload = JSON.parse(ctx.message.successful_payment.invoice_payload);
+    const userId = payload.uId;
+    const bonusNC = payload.amt * 100;
+
+    if (users[userId]) {
+        users[userId].balance += bonusNC;
+        saveDB();
+        ctx.reply(`✅ Оплата принята! Зачислено ${bonusNC} NC.`);
+        console.log(`[STARS] @${users[userId].username} +${bonusNC} NC`);
+    }
+});
+
 bot.start((ctx) => {
     const userId = ctx.from.id.toString();
     if (!users[userId]) {
-        users[userId] = { username: ctx.from.username || 'unknown', balance: 1000, tradeLink: '', withdrawRequests: [] };
+        users[userId] = {
+            username: ctx.from.username || 'unknown',
+            balance: 1000000,
+            tradeLink: '',
+            withdrawRequests: [],
+            usedPromos: []
+        };
         saveDB();
     }
-    ctx.reply(`Баланс: ${users[userId].balance} NC. С 1 апреля! 🃏`);
+    ctx.reply(`С 1 апреля! Твой баланс: ${users[userId].balance} NC. Жми "Играть", чтобы открыть кейсы! 🃏`);
 });
 
 bot.command('setbal', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    const [_, id, amount] = ctx.message.text.split(' ');
+    const parts = ctx.message.text.split(' ');
+    const id = parts[1];
+    const amount = parseInt(parts[2]);
     if (users[id]) {
-        users[id].balance = parseInt(amount);
+        users[id].balance = amount;
         saveDB();
-        ctx.reply(`✅ @${users[id].username}: ${amount} NC`);
+        ctx.reply(`✅ Баланс @${users[id].username} изменен на ${amount} NC`);
     }
 });
 
 // --- ЗАПУСК ---
-const PORT = process.env.PORT || 10000; // Render использует 10000 по умолчанию
-
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`🚀 СЕРВЕР LIVE И ДОСТУПЕН`);
-    console.log(`🔗 Адрес: https://${process.env.RENDER_EXTERNAL_HOSTNAME || 'localhost'}`);
+    console.log(`🚀 СЕРВЕР ЗАПУЩЕН НА ПОРТУ ${PORT}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     bot.launch()
-        .then(() => console.log('🤖 Бот в сети'))
-        .catch(err => console.error('❌ Ошибка бота:', err));
+        .then(() => console.log('🤖 Бот успешно запущен в Telegram'))
+        .catch(err => console.error('❌ Ошибка старта бота:', err));
 });
