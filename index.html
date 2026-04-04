@@ -169,7 +169,31 @@
                 updateUI();
             } catch(e) { console.error("Sync error"); }
         }
+        async function topUp() {
+    const stars = document.getElementById('starsIn').value;
+    const userId = tg.initDataUnsafe.user?.id;
 
+    if (!userId) return tg.showAlert("Ошибка: ID не найден");
+
+    try {
+        const res = await fetch(`${SERVER_URL}/top-up`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId, stars: stars })
+        });
+        
+        const data = await res.json();
+        if (data.ok) {
+            balance = data.newBalance;
+            updateUI();
+            tg.showAlert(`✅ Успешно! Зачислено ${parseInt(stars) * 100} NC`);
+        } else {
+            tg.showAlert("Ошибка пополнения");
+        }
+    } catch (e) {
+        tg.showAlert("Сервер перегружен или недоступен. Попробуй позже.");
+    }
+}
         async function doTask(taskId, link) {
             window.open(link, '_blank');
             setTimeout(async () => {
