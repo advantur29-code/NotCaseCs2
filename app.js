@@ -174,13 +174,55 @@ bot.on('successful_payment', (ctx) => {
     }
 });
 
-bot.start((ctx) => {
+// --- ОБНОВЛЕННАЯ РЕФЕРАЛЬНАЯ СИСТЕМА ---
+
+bot.start(async (ctx) => {
     const userId = ctx.from.id.toString();
+    const startPayload = ctx.payload; // Получаем ID того, кто пригласил (из ссылки ?start=ID)
+
+    // Если пользователя еще нет в базе
     if (!users[userId]) {
-        users[userId] = { username: ctx.from.username || 'unknown', balance: 1000000, usedPromos: [] };
+        users[userId] = { 
+            username: ctx.from.username || 'unknown', 
+            balance: 1000000, 
+            usedPromos: [],
+            tradeLink: "",
+            invitedBy: null // По умолчанию никем не приглашен
+        };
+
+        // ЛОГИКА РЕФЕРАЛОВ
+        if (startPayload && startPayload !== userId) {
+            const referrerId = startPayload; // ID того, кто пригласил (Уровень 1)
+
+            if (users[referrerId]) {
+                // 1. Начисляем 500 NC пригласившему (Уровень 1)
+                users[referrerId].balance += 500;
+                users[userId].invitedBy = referrerId; // Записываем, кто пригласил новичка
+
+                try {
+                    await bot.telegram.sendMessage(referrerId, 
+                        `🤝 **Новый реферал!**\n@${users[userId].username} перешел по твоей ссылке.\n💰 Тебе начислено: **500 NC**`
+                    );
+                } catch (e) { console.log("Ошибка уведомления реферера L1"); }
+
+                // 2. Начисляем 150 NC тому, кто пригласил пригласившего (Уровень 2 - "Дедушка")
+                const grandReferrerId = users[referrerId].invitedBy;
+                if (grandReferrerId && users[grandReferrerId]) {
+                    users[grandReferrerId].balance += 150;
+                    try {
+                        await bot.telegram.sendMessage(grandReferrerId, 
+                            `📈 **Бонус 2-го уровня!**\nДруг твоего друга (@${users[userId].username}) присоединился!\n💰 Тебе начислено: **150 NC**`
+                        );
+                    } catch (e) { console.log("Ошибка уведомления реферера L2"); }
+                }
+            }
+        }
+        
         saveDB();
+        ctx.reply("Добро пожаловать в NotCase! Бонус за регистрацию начислен. 💎");
+    } else {
+        ctx.reply("С возвращением! Твой баланс: " + users[userId].balance.toLocaleString() + " NC");
     }
-    ctx.reply("Привет! Заходи в приложение.");
 });
 
 const PORT = process.env.PORT || 10000;
