@@ -311,12 +311,18 @@
             line.innerHTML = '';
             let c = config[type];
             let roll = Math.random() * 100;
-            let win = (type === 'rich' && roll <= c.chance) ? c.rare : (type === 'rich' ? c.pool[Math.floor(Math.random() * c.pool.length)] : skins.empty);
+            let win;
 
+            if (type === 'rich') {
+
+            win = skins.empty; 
+            } else {
+
+            win = (roll <= c.chance) ? c.rare : (c.pool.length > 0 ? c.pool[Math.floor(Math.random() * c.pool.length)] : skins.empty);
+            }
             const totalItems = 60;
             const winIndex = 55;
-            let spinPool = [...c.pool, c.rare, skins.empty];
-
+            let spinPool = (type === 'rich') ? [skins.empty] : [...c.pool, c.rare, skins.empty];
             for(let i=0; i<totalItems; i++) {
                 let s = (i === winIndex) ? win : spinPool[Math.floor(Math.random() * spinPool.length)];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
