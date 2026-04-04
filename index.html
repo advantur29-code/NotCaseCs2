@@ -78,6 +78,16 @@
             <div id="userTitle" style="font-weight: bold; font-size: 1.1rem;">👤 Загрузка...</div>
             <div id="userIdDisplay" style="font-size:12px; color:gray">ID: ---</div>
         </div>
+
+        <div class="profile-section">
+             <label style="font-size: 13px; color: #aaa;">Бонусы</label>
+             <button class="btn-main" style="background:#4caf50; color:white; margin-bottom:10px" onclick="claimDaily()">🎁 ЗАБРАТЬ 500 NC</button>
+             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <button class="star-btn" onclick="doTask('sub_tg', 'https://t.me/TheCaseCs2')">📢 Канал</button>
+                <button class="star-btn" onclick="doTask('join_chat', 'https://t.me/+3Vp6w6MqO8FkNjEy')">💬 Чат</button>
+             </div>
+        </div>
+
         <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Промокод</label>
             <input type="text" id="promoInput" placeholder="Введите промокод...">
@@ -143,35 +153,43 @@
             rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.ak, skins.m4, skins.deagle], rare: skins.knife, chance: 10 }
         };
 
-        // Функция для задания
-async function doTask(taskId, link) {
-    window.open(link, '_blank'); // Открываем ссылку
-    
-    // Спустя 5 секунд даем возможность забрать награду (или сразу)
-    const response = await fetch('ТВОЙ_URL/check-task', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ userId: myUserId, taskId: taskId })
-    });
-    
-    const data = await response.json();
-    if (data.ok) {
-        alert("Награда получена!");
-        updateBalanceOnUI(data.newBalance);
-    } else {
-        alert(data.error);
-    }
-}
+        async function syncWithServer() {
+            const user = tg.initDataUnsafe.user;
+            if(!user) return;
+            const res = await fetch(`${SERVER_URL}/sync-user`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: user.id, username: user.username })
+            });
+            const data = await res.json();
+            balance = data.balance;
+            updateUI();
+        }
 
-// Кнопка для ежедневки
-async function claimDaily() {
-    const response = await fetch('ТВОЙ_URL/daily-bonus', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ userId: myUserId })
-    });
-    // ... обработка как выше
-}
+        async function doTask(taskId, link) {
+            window.open(link, '_blank');
+            setTimeout(async () => {
+                const res = await fetch(`${SERVER_URL}/check-task`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, taskId: taskId })
+                });
+                const data = await res.json();
+                if (data.ok) { tg.showAlert("Награда получена!"); balance = data.newBalance; updateUI(); }
+                else { tg.showAlert(data.error); }
+            }, 5000);
+        }
+
+        async function claimDaily() {
+            const res = await fetch(`${SERVER_URL}/daily-bonus`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id })
+            });
+            const data = await res.json();
+            if(data.ok) { tg.showAlert("🎁 +500 NC!"); balance = data.newBalance; updateUI(); }
+            else { tg.showAlert(data.error); }
+        }
+
         function updateUI() {
             document.getElementById('balanceDisplay').innerText = balance.toLocaleString() + " NC";
             renderInventory();
@@ -193,54 +211,22 @@ async function claimDaily() {
         async function applyPromo() {
             const code = document.getElementById('promoInput').value;
             if(!code) return;
-            try {
-                const res = await fetch(`${SERVER_URL}/apply-promo`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, promo: code })
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    tg.showAlert("Промокод активирован!");
-                    balance = data.newBalance;
-                    updateUI();
-                } else {
-                    tg.showAlert(data.error || "Ошибка промокода");
-                }
-            } catch(e) { tg.showAlert("Ошибка сервера"); }
-        }
-
-        async function topUp() {
-            const user = tg.initDataUnsafe.user;
-            if (!user) return tg.showAlert("Ошибка: Данные пользователя не найдены!");
-            let starsCount = parseInt(document.getElementById('starsIn').value);
-            if (isNaN(starsCount) || starsCount < 1) return tg.showAlert("Введите число звезд!");
-            try {
-                let response = await fetch(`${SERVER_URL}/create-invoice`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.id.toString(), stars: starsCount })
-                });
-                let data = await response.json();
-                if (data.url) {
-                    tg.openInvoice(data.url, (status) => {
-                        if (status === 'paid') {
-                            tg.showAlert("Оплата успешна!");
-                            setTimeout(syncWithServer, 2000);
-                        }
-                    });
-                }
-            } catch (e) { tg.showAlert("Нет связи с сервером."); }
+            const res = await fetch(`${SERVER_URL}/apply-promo`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, promo: code })
+            });
+            const data = await res.json();
+            if(res.ok) { tg.showAlert("Успешно!"); balance = data.newBalance; updateUI(); }
+            else { tg.showAlert(data.error); }
         }
 
         async function saveTradeLink() {
             const link = document.getElementById('tradeLinkInput').value;
             await fetch(`${SERVER_URL}/save-trade`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, tradeLink: link })
             });
-            tg.showAlert("Трейд-ссылка сохранена!");
+            tg.showAlert("Сохранено!");
         }
 
         function renderInventory() {
@@ -258,8 +244,7 @@ async function claimDaily() {
         }
 
         function sellItem(index) {
-            const item = inventory[index];
-            balance += item.price;
+            balance += inventory[index].price;
             inventory.splice(index, 1);
             localStorage.setItem('nc_inv', JSON.stringify(inventory));
             updateUI();
@@ -269,12 +254,11 @@ async function claimDaily() {
         async function withdrawItem(index) {
             const item = inventory[index];
             const res = await fetch(`${SERVER_URL}/withdraw-item`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, item: item.name })
             });
             if(res.ok) {
-                tg.showAlert("Заявка на " + item.name + " отправлена!");
+                tg.showAlert("Заявка отправлена!");
                 inventory.splice(index, 1);
                 localStorage.setItem('nc_inv', JSON.stringify(inventory));
                 renderInventory();
@@ -310,10 +294,8 @@ async function claimDaily() {
 
         function startSpin(price, type) {
             if (balance < price) return tg.showAlert("Мало NC!");
-            
             const btn = document.getElementById('modalSpinBtn');
             if(btn.disabled) return;
-            
             btn.disabled = true;
             balance -= price; 
             updateUI();
@@ -321,21 +303,12 @@ async function claimDaily() {
 
             const line = document.getElementById('line');
             line.innerHTML = '';
-
             let c = config[type];
             let roll = Math.random() * 100;
-            
-            let win;
-            // ЖЕСТКАЯ ЛОГИКА: выпадать может только в rich
-            if (type === 'rich') {
-                win = (roll <= c.chance) ? c.rare : c.pool[Math.floor(Math.random() * c.pool.length)];
-            } else {
-                win = skins.empty; // Для poor и norm всегда пусто
-            }
+            let win = (type === 'rich' && roll <= c.chance) ? c.rare : (type === 'rich' ? c.pool[Math.floor(Math.random() * c.pool.length)] : skins.empty);
 
             const totalItems = 60;
             const winIndex = 55;
-            // Для визуального шума используем все скины кейса
             let spinPool = [...c.pool, c.rare, skins.empty];
 
             for(let i=0; i<totalItems; i++) {
@@ -345,9 +318,7 @@ async function claimDaily() {
 
             setTimeout(() => {
                 line.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
-                const itemWidth = 110; 
-                const wrapperWidth = document.querySelector('.roulette-wrapper').offsetWidth;
-                const finalPosition = (winIndex * itemWidth) + (itemWidth / 2) - (wrapperWidth / 2);
+                const finalPosition = (winIndex * 110) + 55 - (document.querySelector('.roulette-wrapper').offsetWidth / 2);
                 line.style.transform = `translateX(-${finalPosition}px)`;
             }, 50);
 
@@ -356,9 +327,7 @@ async function claimDaily() {
                     inventory.push(win); 
                     localStorage.setItem('nc_inv', JSON.stringify(inventory));
                     tg.showAlert("ВЫПАЛО: " + win.name); 
-                } else {
-                    tg.showAlert("Увы, ничего не выпало. Попробуй Кейс Миллионера!");
-                }
+                } else tg.showAlert("Пусто!");
                 btn.disabled = false;
                 updateUI();
             }, 5500);
@@ -366,8 +335,7 @@ async function claimDaily() {
 
         function fastSaveBalance() {
             fetch(`${SERVER_URL}/update-balance`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, balance: balance })
             });
         }
