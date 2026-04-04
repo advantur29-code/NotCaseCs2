@@ -1,233 +1,291 @@
-const { Telegraf, Markup } = require('telegraf');
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const fs = require('fs');
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NotCase CS2</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { --blue: #4b69ff; --purple: #8847ff; --pink: #d32ee6; --red: #eb4b4b; --gold: #caab05; --gray: #333; --bg: #0b0b0b; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding-bottom: 80px; overflow-x: hidden; height: 100vh; display: flex; flex-direction: column; }
+        .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #151515; border-bottom: 1px solid #333; }
+        .balance { color: #ffca28; font-weight: bold; font-size: 1.1rem; }
+        .page { display: none; flex: 1; overflow-y: auto; padding: 20px; }
+        .page.active { display: block; }
+        .case-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+        .close-modal { position: absolute; top: 20px; right: 20px; font-size: 30px; color: #666; cursor: pointer; z-index: 110; }
+        .roulette-wrapper { position: relative; width: 100%; height: 130px; background: #151515; border: 2px solid #333; overflow: hidden; margin: 20px 0; }
+        .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #ffca28; z-index: 10; transform: translateX(-50%); }
+        .cases-line { display: flex; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); will-change: transform; align-items: center; height: 100%; }
+        .item { min-width: 100px; width: 100px; height: 100px; margin: 0 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; flex-shrink: 0; }
+        .item img { width: 60px; height: auto; object-fit: contain; }
+        .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; cursor: pointer; }
+        .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .pool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .pool-item { background: #1a1a1a; padding: 8px; border-radius: 8px; border-bottom: 3px solid var(--blue); text-align: center; font-size: 10px; }
+        .pool-item img { width: 45px; margin-bottom: 5px; }
+        .profile-section { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #222; }
+        .inv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        input { background: #111; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; width: calc(100% - 22px); margin: 5px 0; }
+        .nav { position: fixed; bottom: 0; width: 100%; height: 70px; background: #151515; border-top: 1px solid #333; display: flex; z-index: 50; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; cursor: pointer; }
+        .nav-item.active { color: #ffca28; }
+        .star-btn { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
 
-// --- НАСТРОЙКИ ---
-const bot = new Telegraf('8297728079:AAHb8-Sys7zF9ma68vLsa4Vzw2lOWerp8NM');
-const app = express();
-const ADMIN_ID = 8019223768; 
-const DB_FILE = 'database.json';
+    <div class="header">
+        <div>NotCase 📦</div>
+        <div class="balance" id="balanceDisplay">0 NC</div>
+    </div>
 
-app.use(cors());
-app.use(bodyParser.json());
+    <div id="caseModal" class="case-modal">
+        <div class="close-modal" onclick="closeCase()">✖</div>
+        <h2 id="modalTitle" style="text-align:center">Кейс</h2>
+        <div class="roulette-wrapper">
+            <div class="pointer"></div>
+            <div id="line" class="cases-line"></div>
+        </div>
+        <button class="btn-main" id="modalSpinBtn">ОТКРЫТЬ КЕЙС</button>
+        <p id="modalPrice" style="text-align:center; color:gold; margin-top:10px"></p>
+        <div style="margin-top:20px; font-weight:bold; color:#888; font-size:12px;">ВОЗМОЖНЫЙ ДРОП:</div>
+        <div id="poolGrid" class="pool-grid"></div>
+    </div>
 
-// Фикс кодировки
-app.use((req, res, next) => {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    next();
-});
+    <div id="page-cases" class="page active">
+        <div class="case-card" onclick="openCase('poor')"><h3>📦 Бомж-Кейс</h3><div style="color:gold">10 NC</div></div>
+        <div class="case-card" onclick="openCase('norm')"><h3>💼 Обычный Кейс</h3><div style="color:gold">1,500 NC</div></div>
+        <div class="case-card" onclick="openCase('rich')"><h3>💎 Кейс Миллионера</h3><div style="color:gold">250,000 NC</div></div>
+    </div>
 
-// --- БАЗА ДАННЫХ ---
-let users = {};
-const loadDB = () => {
-    if (fs.existsSync(DB_FILE)) {
-        try {
-            users = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-            console.log(`[DB] Loaded: ${Object.keys(users).length} users`);
-        } catch (e) { 
-            console.error("[DB] Load Error:", e);
-            users = {}; 
-        }
-    }
-};
-loadDB();
+    <div id="page-profile" class="page">
+        <div class="profile-section">
+            <div id="userTitle" style="font-weight: bold; font-size: 1.1rem;">👤 Загрузка...</div>
+            <div id="userIdDisplay" style="font-size:12px; color:gray">ID: ---</div>
+        </div>
+        <div class="profile-section">
+            <button class="btn-main" style="background:#4caf50; color:white; margin-bottom:10px" onclick="claimDaily()">🎁 ЕЖЕДНЕВНЫЙ БОНУС</button>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                <button class="star-btn" onclick="doTask('sub_tg', 'https://t.me/TheCaseCs2')">📢 Канал (+50к)</button>
+                <button class="star-btn" onclick="doTask('join_chat', 'https://t.me/+3Vp6w6MqO8FkNjEy')">💬 Чат (+25к)</button>
+            </div>
+            <button class="btn-main" style="background: linear-gradient(to right, #8847ff, #d32ee6); color: white;" onclick="doTask('boost_tg', 'https://t.me/boost/TheCaseCs2')">🚀 ПРОГОЛОСОВАТЬ (+500к NC)</button>
+        </div>
+        <div class="profile-section">
+            <label>Трейд-ссылка</label>
+            <input type="text" id="tradeLinkInput" placeholder="Steam Trade Link...">
+            <button class="btn-main" onclick="saveTradeLink()">СОХРАНИТЬ</button>
+        </div>
+        <div class="profile-section">
+            <label>Реферальная ссылка</label>
+            <input type="text" id="refLink" readonly onclick="this.select()">
+        </div>
+        <h3>Инвентарь</h3>
+        <div id="inventoryGrid" class="inv-grid"></div>
+    </div>
 
-const saveDB = () => {
-    try {
-        fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2), 'utf8');
-    } catch (e) {
-        console.error("[DB] Save Error:", e);
-    }
-};
+    <div id="page-shop" class="page">
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:15px;">
+            <button class="star-btn" onclick="setStars(10)">⭐ 10</button>
+            <button class="star-btn" onclick="setStars(50)">⭐ 50</button>
+            <button class="star-btn" onclick="setStars(100)">⭐ 100</button>
+            <button class="star-btn" onclick="setStars(500)">⭐ 500</button>
+        </div>
+        <div style="text-align:center; margin-bottom:20px; background:#1a1a1a; padding:15px; border-radius:12px;">
+            <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:80px; text-align:center; font-size:1.1rem;"> ⭐ = <span id="ncOut" style="color:gold; font-weight:bold">75,000</span> NC
+        </div>
+        <button class="btn-main" onclick="topUp()" style="height:50px;">ПОПОЛНИТЬ ЧЕРЕЗ STARS</button>
+    </div>
 
-// Хелпер для инициализации юзера (если запросы пришли раньше /sync-user)
-const initUser = (id, username = 'unknown') => {
-    if (!users[id]) {
-        users[id] = { 
-            username: username, 
-            balance: 10000, 
-            usedPromos: [], 
-            completedTasks: [], 
-            lastBonus: null, 
-            tradeLink: "",
-            invitedBy: null,
-            inventory: []
+    <nav class="nav">
+        <div id="nav-cases" class="nav-item active" onclick="nav('cases')">📦<br>Кейсы</div>
+        <div id="nav-profile" class="nav-item" onclick="nav('profile')">👤<br>Профиль</div>
+        <div id="nav-shop" class="nav-item" onclick="nav('shop')">💰<br>Магазин</div>
+    </nav>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        const SERVER_URL = 'https://advantur.serveousercontent.com';
+        let balance = 0;
+
+        const skins = {
+            empty: { name: "Ничего", color: "empty", img: "not.png", price: 0 },
+            shirp1: { name: "Ширпотреб", color: "blue", img: "shirp1.png", price: 10 },
+            ak: { name: "AK-47 | Redline", color: "red", img: "ak.png", price: 120000 },
+            knife: { name: "M9 Bayonet", color: "gold", img: "4knife.png", price: 2500000 }
         };
-        saveDB();
-    }
-    return users[id];
-};
 
-// --- API ДЛЯ MINI APP ---
+        const config = {
+            poor: { title: "Бомж-Кейс", price: 10, drop: [skins.shirp1, skins.ak] },
+            norm: { title: "Обычный Кейс", price: 1500, drop: [skins.ak, skins.shirp1] },
+            rich: { title: "Кейс Миллионера", price: 250000, drop: [skins.knife, skins.ak] }
+        };
 
-app.post('/sync-user', (req, res) => {
-    const userId = req.body.userId?.toString();
-    if (!userId) return res.status(400).json({ error: "No ID" });
-    const user = initUser(userId, req.body.username);
-    res.json(user);
-});
+        // Синхронизация с сервером
+        async function syncWithServer() {
+            if(!tg.initDataUnsafe.user) return;
+            try {
+                const res = await fetch(`${SERVER_URL}/sync-user`, {
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        userId: tg.initDataUnsafe.user.id, 
+                        username: tg.initDataUnsafe.user.username 
+                    })
+                });
+                const data = await res.json();
+                balance = data.balance;
+                document.getElementById('tradeLinkInput').value = data.tradeLink || "";
+                updateUI();
+            } catch (e) { console.error("Sync error:", e); }
+        }
 
-app.post('/save-trade', (req, res) => {
-    const { userId, tradeLink } = req.body;
-    const id = userId?.toString();
-    if (users[id]) {
-        users[id].tradeLink = tradeLink;
-        saveDB();
-        res.json({ ok: true });
-    } else {
-        res.status(404).json({ error: "User not found" });
-    }
-});
+        // Выполнение заданий
+        async function doTask(taskId, link) {
+            tg.openTelegramLink(link);
+            tg.showConfirm("Вы перешли по ссылке? Нажмите ОК для проверки.", async (ok) => {
+                if (ok) {
+                    try {
+                        const res = await fetch(`${SERVER_URL}/check-task`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, taskId: taskId })
+                        });
+                        const data = await res.json();
+                        if (data.ok) {
+                            tg.showAlert("✅ Задание выполнено!");
+                            balance = data.newBalance;
+                            updateUI();
+                        } else { tg.showAlert("❌ " + (data.error || "Ошибка")); }
+                    } catch (e) { tg.showAlert("Ошибка сервера"); }
+                }
+            });
+        }
 
-app.post('/update-balance', (req, res) => {
-    const { userId, balance } = req.body;
-    const id = userId?.toString();
-    if (users[id]) {
-        users[id].balance = parseInt(balance) || 0;
-        saveDB();
-        res.json({ ok: true });
-    } else {
-        res.status(404).json({ error: "User not found" });
-    }
-});
+        // Ежедневный бонус
+        async function claimDaily() {
+            try {
+                const res = await fetch(`${SERVER_URL}/daily-bonus`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: tg.initDataUnsafe.user.id })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    tg.showAlert("🎁 +500 NC получено!");
+                    balance = data.newBalance;
+                    updateUI();
+                } else { tg.showAlert("❌ " + (data.error || "Уже получено")); }
+            } catch (e) { tg.showAlert("Ошибка сервера"); }
+        }
 
-app.post('/check-task', (req, res) => {
-    const { userId, taskId } = req.body;
-    const id = userId?.toString();
-    
-    // Если юзера нет в базе — создаем его на лету
-    const user = initUser(id);
+        // Сохранение трейда
+        async function saveTradeLink() {
+            const link = document.getElementById('tradeLinkInput').value;
+            const res = await fetch(`${SERVER_URL}/save-trade`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, tradeLink: link })
+            });
+            const data = await res.json();
+            if (data.ok) tg.showAlert("✅ Сохранено!");
+        }
 
-    if (!user.completedTasks) user.completedTasks = [];
-    if (user.completedTasks.includes(taskId)) {
-        return res.status(400).json({ error: "Already done" });
-    }
+        // Магазин Stars
+        async function topUp() {
+            const stars = document.getElementById('starsIn').value;
+            const res = await fetch(`${SERVER_URL}/create-stars-invoice`, {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, stars: stars })
+            });
+            const data = await res.json();
+            if (data.link) tg.openInvoice(data.link, (s) => { if(s==='paid') syncWithServer(); });
+        }
 
-    let reward = 0;
-    if (taskId === 'sub_tg') reward = 50000;
-    if (taskId === 'join_chat') reward = 25000;
-    if (taskId === 'boost_tg') reward = 500000;
+        function setStars(v) { document.getElementById('starsIn').value = v; calcNC(); }
+        function calcNC() { document.getElementById('ncOut').innerText = (document.getElementById('starsIn').value * 7500).toLocaleString(); }
 
-    if (reward > 0) {
-        user.balance += reward;
-        user.completedTasks.push(taskId);
-        saveDB();
-        console.log(`[Task] User ${id} finished ${taskId}. Reward: ${reward}`);
-        return res.json({ ok: true, newBalance: user.balance });
-    }
-    res.status(400).json({ error: "Unknown task" });
-});
+        function updateUI() {
+            document.getElementById('balanceDisplay').innerText = balance.toLocaleString() + " NC";
+        }
 
-app.post('/daily-bonus', (req, res) => {
-    const id = req.body.userId?.toString();
-    const user = initUser(id);
-    
-    const now = Date.now();
-    const lastBonus = user.lastBonus ? new Date(user.lastBonus).getTime() : 0;
-    const DAY = 24 * 60 * 60 * 1000;
+        // Логика кейсов
+        function openCase(type) {
+            let c = config[type];
+            document.getElementById('modalTitle').innerText = c.title;
+            document.getElementById('modalPrice').innerText = "Цена: " + c.price.toLocaleString() + " NC";
+            document.getElementById('modalSpinBtn').onclick = () => startSpin(c.price, type);
+            
+            const grid = document.getElementById('poolGrid');
+            grid.innerHTML = '';
+            [skins.empty, ...c.drop].forEach(s => {
+                grid.innerHTML += `<div class="pool-item" style="border-color: var(--${s.color})"><img src="${s.img}"><br>${s.name}</div>`;
+            });
 
-    if (now - lastBonus > DAY) {
-        user.balance += 500;
-        user.lastBonus = new Date().toISOString();
-        saveDB();
-        return res.json({ ok: true, newBalance: user.balance });
-    }
-    res.status(400).json({ error: "Already claimed" });
-});
+            document.getElementById('caseModal').style.display = 'block';
+            const line = document.getElementById('line');
+            line.style.transition = 'none';
+            line.style.transform = 'translateX(0)';
+            line.innerHTML = '';
+            for(let i=0; i<15; i++) {
+                let s = c.drop[Math.floor(Math.random() * c.drop.length)];
+                line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
+            }
+        }
 
-app.post('/apply-promo', (req, res) => {
-    const id = req.body.userId?.toString();
-    const { promo } = req.body;
-    const user = initUser(id);
+        function startSpin(price, type) {
+            if (balance < price) return tg.showAlert("Мало NC!");
+            const btn = document.getElementById('modalSpinBtn');
+            btn.disabled = true;
+            balance -= price;
+            updateUI();
 
-    if (!user.usedPromos) user.usedPromos = [];
-    const code = promo?.toLowerCase();
-    if (user.usedPromos.includes(code)) return res.status(400).json({ error: "Already used" });
+            const line = document.getElementById('line');
+            const c = config[type];
+            const winIndex = 40; 
+            line.innerHTML = '';
 
-    let bonus = 0;
-    if (code === 'advantur') bonus = 1000000;
-    if (code === 'start') bonus = 50000;
+            for(let i=0; i<50; i++) {
+                let s = (i === winIndex) ? skins.empty : (Math.random() > 0.5 ? c.drop[0] : c.drop[1]);
+                line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
+            }
 
-    if (bonus > 0) {
-        user.balance += bonus;
-        user.usedPromos.push(code);
-        saveDB();
-        return res.json({ ok: true, newBalance: user.balance });
-    }
-    res.status(400).json({ error: "Invalid promo" });
-});
+            setTimeout(() => {
+                line.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
+                const offset = (winIndex * 110) + 55 - (window.innerWidth / 2);
+                line.style.transform = `translateX(-${offset}px)`;
+            }, 50);
 
-// --- STARS PAYMENTS ---
-app.post('/create-stars-invoice', async (req, res) => {
-    const { userId, stars } = req.body;
-    try {
-        const link = await bot.telegram.createInvoiceLink({
-            title: "Пополнение NC",
-            description: `Обмен ${stars} Stars на монеты NC`,
-            payload: `stars_${userId}_${stars}`,
-            provider_token: "", 
-            currency: "XTR",
-            prices: [{ label: "Stars", amount: parseInt(stars) }]
-        });
-        res.json({ ok: true, link: link });
-    } catch (e) {
-        console.error("Invoice Error:", e);
-        res.status(500).json({ error: "Invoice error" });
-    }
-});
+            setTimeout(() => {
+                tg.showAlert("Увы, вам ничего не выпало!");
+                btn.disabled = false;
+                updateUI();
+                fetch(`${SERVER_URL}/update-balance`, {
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, balance: balance })
+                });
+            }, 5500);
+        }
 
-bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
-bot.on('successful_payment', async (ctx) => {
-    const payload = ctx.message.successful_payment.invoice_payload;
-    const [ , userId, stars] = payload.split('_');
-    const user = initUser(userId);
-    
-    const amountNC = parseInt(stars) * 7500; 
-    user.balance += amountNC;
-    saveDB();
-    await ctx.reply(`✅ +${amountNC.toLocaleString()} NC зачислено!`);
-});
+        function closeCase() { document.getElementById('caseModal').style.display = 'none'; }
+        function nav(p) {
+            document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+            document.getElementById('page-'+p).classList.add('active');
+            document.getElementById('nav-'+p).classList.add('active');
+        }
 
-// --- БОТ КОМАНДЫ ---
-bot.start(async (ctx) => {
-    const userId = ctx.from.id.toString();
-    const startPayload = ctx.payload; 
-    
-    const user = initUser(userId, ctx.from.username || ctx.from.first_name);
-    
-    if (startPayload && startPayload !== userId && !user.invitedBy && users[startPayload]) {
-        user.invitedBy = startPayload;
-        users[startPayload].balance += 1000;
-        try { 
-            await bot.telegram.sendMessage(startPayload, `💰 +1,000 NC! По вашей ссылке зашел @${ctx.from.username || userId}`); 
-        } catch(e){}
-    }
-    saveDB();
-    
-    ctx.reply("Добро пожаловать в NotCase!", Markup.inlineKeyboard([
-        [Markup.button.webApp("ИГРАТЬ", "https://твоя-ссылка.com")]
-    ]));
-});
-
-bot.command('admin', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    ctx.reply(`Юзеров: ${Object.keys(users).length}\n/give [сумма]`);
-});
-
-bot.command('give', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const amount = parseInt(ctx.payload);
-    if (isNaN(amount)) return ctx.reply("Пример: /give 5000");
-    Object.keys(users).forEach(id => { users[id].balance += amount; });
-    saveDB();
-    ctx.reply(`Раздали ${amount} всем!`);
-});
-
-// --- ЗАПУСК ---
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, '0.0.0.0', () => { 
-    console.log(`Server started on port ${PORT}`); 
-    bot.launch(); 
-});
+        if(tg.initDataUnsafe.user) {
+            const u = tg.initDataUnsafe.user;
+            document.getElementById('userTitle').innerText = "👤 " + (u.username || u.first_name);
+            document.getElementById('userIdDisplay').innerText = "ID: " + u.id;
+            document.getElementById('refLink').value = "https://t.me/notcasecs2_bot?start=" + u.id;
+            syncWithServer();
+        }
+    </script>
+</body>
+</html>
