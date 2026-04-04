@@ -95,12 +95,17 @@ app.post('/daily-bonus', (req, res) => {
 app.post('/check-task', (req, res) => {
     const { userId, taskId } = req.body;
     const id = userId?.toString();
+    
     if (!id || !users[id]) return res.status(400).json({ error: "User not found" });
     if (users[id].completedTasks.includes(taskId)) return res.status(400).json({ error: "Уже выполнено!" });
+
     let reward = 0;
-    if (taskId === 'sub_tg') reward = 50000;
-    if (taskId === 'join_chat') reward = 25000;
-    if (taskId === 'boost_tg') reward = 500000;
+    
+    // ЛОГИКА НАГРАД
+    if (taskId === 'sub_tg') reward = 50000;    // За подписку
+    if (taskId === 'join_chat') reward = 25000; // За чат
+    if (taskId === 'boost_tg') reward = 500000; // ЗА ГОЛОС (БУСТ) — 500к NC
+    
     if (reward > 0) {
         users[id].balance += reward;
         users[id].completedTasks.push(taskId);
