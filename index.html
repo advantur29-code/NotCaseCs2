@@ -19,21 +19,11 @@
         .cases-line { display: flex; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); will-change: transform; align-items: center; height: 100%; }
         .item { min-width: 100px; width: 100px; height: 100px; margin: 0 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; flex-shrink: 0; }
         .item img { width: 60px; height: auto; object-fit: contain; }
-        .item.empty { border-color: var(--gray); }
-        .item.blue { border-color: var(--blue); }
-        .item.purple { border-color: var(--purple); }
-        .item.pink { border-color: var(--pink); }
-        .item.red { border-color: var(--red); }
-        .item.gold { border-color: var(--gold); }
         .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; cursor: pointer; }
         .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-withdraw, .btn-sell { color: white; border: none; font-size: 10px; padding: 4px; border-radius: 4px; margin-top: 5px; cursor: pointer; width: 90%; }
-        .btn-withdraw { background: #eb4b4b; }
-        .btn-sell { background: #4caf50; }
-        .pool-preview { margin-top: 20px; border-top: 1px solid #333; padding-top: 15px; }
+        .btn-sell { background: #4caf50; color: white; border: none; font-size: 10px; padding: 4px; border-radius: 4px; margin-top: 5px; cursor: pointer; width: 90%; }
         .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; margin-top: 10px; }
         .pool-item { background: #1a1a1a; padding: 5px; border-radius: 4px; border-bottom: 2px solid var(--blue); text-align: center; font-size: 9px; }
-        .pool-item img { width: 40px; }
         .profile-section { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #222; }
         .inv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
         input { background: #111; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; width: calc(100% - 22px); margin: 5px 0; }
@@ -54,17 +44,13 @@
     <div id="caseModal" class="case-modal">
         <div class="close-modal" onclick="closeCase()">✖</div>
         <h2 id="modalTitle" style="text-align:center">Кейс</h2>
-        <div class="rou roulette-wrapper">
+        <div class="roulette-wrapper">
             <div class="pointer"></div>
             <div id="line" class="cases-line"></div>
         </div>
         <button class="btn-main" id="modalSpinBtn">ОТКРЫТЬ КЕЙС</button>
         <p id="modalPrice" style="text-align:center; color:gold; margin-top:10px"></p>
-        
-        <div class="pool-preview">
-            <div style="font-size: 14px; color: #aaa; margin-bottom: 10px;">Содержимое кейса:</div>
-            <div id="poolGrid" class="pool-grid"></div>
-        </div>
+        <div id="poolGrid" class="pool-grid"></div>
     </div>
 
     <div id="page-cases" class="page active">
@@ -80,32 +66,23 @@
         </div>
 
         <div class="profile-section">
-            <label style="font-size: 13px; color: #aaa;">Бонусы за поддержку</label>
             <button class="btn-main" style="background:#4caf50; color:white; margin-bottom:10px" onclick="claimDaily()">🎁 ЕЖЕДНЕВНЫЙ БОНУС</button>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <button class="star-btn" onclick="doTask('sub_tg', 'https://t.me/TheCaseCs2')">📢 Канал (+50к)</button>
                 <button class="star-btn" onclick="doTask('join_chat', 'https://t.me/+3Vp6w6MqO8FkNjEy')">💬 Чат (+25к)</button>
             </div>
-            <button class="btn-main" style="background: linear-gradient(to right, #8847ff, #d32ee6); color: white;" 
-                    onclick="doTask('boost_tg', 'https://t.me/boost/TheCaseCs2')">
-                🚀 ПРОГОЛОСОВАТЬ ЗА КАНАЛ (+500к NC)
-            </button>
         </div>
 
         <div class="profile-section">
-            <label style="font-size: 13px; color: #aaa;">Промокод</label>
-            <input type="text" id="promoInput" placeholder="Введите промокод...">
-            <button class="btn-main" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
-        </div>
-        <div class="profile-section">
-            <label style="font-size: 13px; color: #aaa;">Трейд-ссылка</label>
-            <input type="text" id="tradeLinkInput" placeholder="https://steamcommunity.com/tradeoffer/...">
-            <button class="btn-main" onclick="saveTradeLink()">СОХРАНИТЬ ССЫЛКУ</button>
-        </div>
-        <div class="profile-section">
-            <label style="font-size: 13px; color: #aaa;">Твоя реферальная ссылка</label>
+            <label>Твоя реферальная ссылка (3 уровня):</label>
             <input type="text" id="refLink" readonly onclick="this.select()">
         </div>
+
+        <div class="profile-section">
+            <input type="text" id="promoInput" placeholder="Промокод...">
+            <button class="btn-main" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
+        </div>
+
         <h3>Инвентарь</h3>
         <div id="inventoryGrid" class="inv-grid"></div>
     </div>
@@ -133,27 +110,23 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        // ОБЯЗАТЕЛЬНО ПРОВЕРЬ ЭТОТ URL
         const SERVER_URL = 'https://advantur.serveousercontent.com';
+        
         let balance = 0;
         let inventory = JSON.parse(localStorage.getItem('nc_inv')) || [];
 
         const skins = {
-            empty: { name: "Ничего", color: "empty", img: "not.png", price: 0 },
+            empty: { name: "Пусто", color: "empty", img: "not.png", price: 0 },
             shirp1: { name: "Shirp 1", color: "blue", img: "shirp1.png", price: 10 },
-            shirp2: { name: "Shirp 2", color: "blue", img: "shirp2.png", price: 15 },
-            shirp3: { name: "Shirp 3", color: "blue", img: "shirp3.png", price: 20 },
-            shirp4: { name: "Shirp 4", color: "blue", img: "shirp4.png", price: 25 },
-            shirp5: { name: "Shirp 5", color: "blue", img: "shirp5.png", price: 30 },
-            deagle: { name: "Desert Eagle | Printstream", color: "purple", img: "deagle.png", price: 45000 },
             ak: { name: "AK-47 | Redline", color: "red", img: "ak.png", price: 120000 },
-            m4: { name: "M4A4 | Howl", color: "red", img: "voi.png", price: 850000 },
-            knife: { name: "knife", color: "gold", img: "4knife.png", price: 2500000 }
+            knife: { name: "Knife", color: "gold", img: "4knife.png", price: 2500000 }
         };
 
         const config = {
-            poor: { title: "Бомж-Кейс", price: 10, pool: [skins.shirp1], rare: skins.knife, chance: 0 }, 
-            norm: { title: "Обычный Кейс", price: 15000, pool: [skins.shirp1, skins.shirp2, skins.shirp3, skins.shirp4, skins.shirp5], rare: skins.ak, chance: 0 },
-            rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.ak, skins.m4, skins.deagle], rare: skins.knife, chance: 10 }
+            poor: { title: "Бомж-Кейс", price: 10, pool: [skins.shirp1], rare: skins.shirp1 },
+            norm: { title: "Обычный Кейс", price: 15000, pool: [skins.shirp1], rare: skins.ak },
+            rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.ak], rare: skins.knife }
         };
 
         async function syncWithServer() {
@@ -167,43 +140,27 @@
                 const data = await res.json();
                 balance = data.balance;
                 updateUI();
-            } catch(e) { console.error("Sync error"); }
+            } catch(e) { console.log("Sync failed"); }
         }
+
         async function topUp() {
-    const stars = document.getElementById('starsIn').value;
-    const userId = tg.initDataUnsafe.user?.id;
-
-    if (!userId) return tg.showAlert("Ошибка: ID не найден");
-
-    try {
-        const res = await fetch(`${SERVER_URL}/top-up`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: userId, stars: stars })
-        });
-        
-        const data = await res.json();
-        if (data.ok) {
-            balance = data.newBalance;
-            updateUI();
-            tg.showAlert(`✅ Успешно! Зачислено ${parseInt(stars) * 100} NC`);
-        } else {
-            tg.showAlert("Ошибка пополнения");
-        }
-    } catch (e) {
-        tg.showAlert("Сервер перегружен или недоступен. Попробуй позже.");
-    }
-}
-        async function doTask(taskId, link) {
-            window.open(link, '_blank');
-            setTimeout(async () => {
-                const res = await fetch(`${SERVER_URL}/check-task`, {
+            const stars = document.getElementById('starsIn').value;
+            const userId = tg.initDataUnsafe.user?.id;
+            try {
+                const res = await fetch(`${SERVER_URL}/create-stars-invoice`, {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, taskId: taskId })
+                    body: JSON.stringify({ userId: userId, stars: stars })
                 });
                 const data = await res.json();
-                if (data.ok) { tg.showAlert("Награда получена!"); balance = data.newBalance; updateUI(); }
-            }, 5000);
+                if (data.link) {
+                    tg.openInvoice(data.link, (status) => {
+                        if (status === 'paid') {
+                            tg.showAlert("Оплата принята!");
+                            setTimeout(syncWithServer, 2000);
+                        }
+                    });
+                }
+            } catch(e) { tg.showAlert("Ошибка платежа"); }
         }
 
         async function claimDaily() {
@@ -212,7 +169,18 @@
                 body: JSON.stringify({ userId: tg.initDataUnsafe.user.id })
             });
             const data = await res.json();
-            if(data.ok) { tg.showAlert("🎁 +500 NC!"); balance = data.newBalance; updateUI(); }
+            if(data.ok) { balance = data.newBalance; updateUI(); tg.showAlert("🎁 +500 NC!"); }
+            else { tg.showAlert(data.error); }
+        }
+
+        async function applyPromo() {
+            const code = document.getElementById('promoInput').value;
+            const res = await fetch(`${SERVER_URL}/apply-promo`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, promo: code })
+            });
+            const data = await res.json();
+            if(data.ok) { balance = data.newBalance; updateUI(); tg.showAlert("Миллион NC зачислен!"); }
         }
 
         function updateUI() {
@@ -228,35 +196,13 @@
         }
 
         function setStars(val) { document.getElementById('starsIn').value = val; calcNC(); }
-        function calcNC() {
-            let v = document.getElementById('starsIn').value;
-            document.getElementById('ncOut').innerText = (v * 100).toLocaleString();
-        }
-
-        async function applyPromo() {
-            const code = document.getElementById('promoInput').value;
-            const res = await fetch(`${SERVER_URL}/apply-promo`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, promo: code })
-            });
-            const data = await res.json();
-            if(res.ok) { balance = data.newBalance; updateUI(); }
-        }
-
-        async function saveTradeLink() {
-            const link = document.getElementById('tradeLinkInput').value;
-            await fetch(`${SERVER_URL}/save-trade`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, tradeLink: link })
-            });
-            tg.showAlert("Сохранено!");
-        }
+        function calcNC() { document.getElementById('ncOut').innerText = (document.getElementById('starsIn').value * 100).toLocaleString(); }
 
         function renderInventory() {
             const grid = document.getElementById('inventoryGrid');
             grid.innerHTML = '';
             inventory.forEach((item, index) => {
-                grid.innerHTML += `<div class="item ${item.color}"><img src="${item.img}" onerror="this.src='not.png'"><div style="font-size:9px;">${item.price} NC</div><button class="btn-sell" onclick="sellItem(${index})">ПРОДАТЬ</button></div>`;
+                grid.innerHTML += `<div class="item ${item.color}"><img src="${item.img}"><button class="btn-sell" onclick="sellItem(${index})">ПРОДАТЬ</button></div>`;
             });
         }
 
@@ -265,7 +211,10 @@
             inventory.splice(index, 1);
             localStorage.setItem('nc_inv', JSON.stringify(inventory));
             updateUI();
-            fastSaveBalance();
+            fetch(`${SERVER_URL}/update-balance`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, balance: balance })
+            });
         }
 
         function openCase(type) {
@@ -273,82 +222,58 @@
             document.getElementById('modalTitle').innerText = c.title;
             document.getElementById('modalPrice').innerText = "Цена: " + c.price.toLocaleString() + " NC";
             document.getElementById('modalSpinBtn').onclick = () => startSpin(c.price, type);
-            
-            const pGrid = document.getElementById('poolGrid');
-            pGrid.innerHTML = '';
-            [...c.pool, c.rare].forEach(s => {
-                pGrid.innerHTML += `<div class="pool-item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"><br>${s.name}</div>`;
-            });
-
             document.getElementById('caseModal').style.display = 'block';
+            
             const line = document.getElementById('line');
             line.style.transition = 'none';
             line.style.transform = 'translateX(0)';
             line.innerHTML = '';
-            for(let i=0; i<15; i++) {
-                let s = [...c.pool, c.rare][Math.floor(Math.random() * ([...c.pool, c.rare].length))];
-                line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
+            for(let i=0; i<20; i++) {
+                line.innerHTML += `<div class="item ${c.pool[0].color}"><img src="${c.pool[0].img}"></div>`;
             }
         }
 
         function closeCase() { document.getElementById('caseModal').style.display = 'none'; }
 
         function startSpin(price, type) {
-            if (balance < price) return tg.showAlert("Мало NC!");
+            if (balance < price) return tg.showAlert("Недостаточно NC!");
             const btn = document.getElementById('modalSpinBtn');
-            if(btn.disabled) return;
             btn.disabled = true;
-            balance -= price; 
+            balance -= price;
             updateUI();
-            fastSaveBalance();
 
             const line = document.getElementById('line');
+            const win = config[type].rare;
+            const winIndex = 45;
             line.innerHTML = '';
-            
-            const win = skins.empty; 
-
-            const totalItems = 60;
-            const winIndex = 55;
-            
-            let c = config[type];
-            let spinPool = [...c.pool, c.rare]; 
-
-            for(let i=0; i<totalItems; i++) {
-                let s = (i === winIndex) ? win : spinPool[Math.floor(Math.random() * spinPool.length)];
-                line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
+            for(let i=0; i<50; i++) {
+                let s = (i === winIndex) ? win : config[type].pool[0];
+                line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}"></div>`;
             }
 
             setTimeout(() => {
                 line.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
-                const finalPosition = (winIndex * 110) + 55 - (document.querySelector('.roulette-wrapper').offsetWidth / 2);
-                line.style.transform = `translateX(-${finalPosition}px)`;
+                const itemWidth = 110;
+                const offset = (winIndex * itemWidth) - (window.innerWidth / 2) + 55;
+                line.style.transform = `translateX(-${offset}px)`;
             }, 50);
 
             setTimeout(() => {
-                tg.showAlert("Пусто!");
+                inventory.push(win);
+                localStorage.setItem('nc_inv', JSON.stringify(inventory));
+                tg.showAlert("Поздравляем! Вы выбили: " + win.name);
                 btn.disabled = false;
                 updateUI();
             }, 5500);
         }
 
-        function fastSaveBalance() {
-            fetch(`${SERVER_URL}/update-balance`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, balance: balance })
-            });
+        if(tg.initDataUnsafe.user) {
+            const u = tg.initDataUnsafe.user;
+            document.getElementById('userTitle').innerText = "👤 " + (u.username || u.first_name);
+            document.getElementById('userIdDisplay').innerText = "ID: " + u.id;
+            document.getElementById('refLink').value = "https://t.me/notcasecs2_bot?start=" + u.id;
+            syncWithServer();
         }
-
-        function init() {
-            if(tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                const user = tg.initDataUnsafe.user;
-                document.getElementById('userTitle').innerText = "👤 " + (user.first_name || "User");
-                document.getElementById('userIdDisplay').innerText = "ID: " + user.id;
-                document.getElementById('refLink').value = "https://t.me/notcasecs2_bot?start=" + user.id;
-                syncWithServer();
-            }
-            updateUI();
-        }
-        init();
     </script>
 </body>
 </html>
