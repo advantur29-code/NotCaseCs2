@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 
 // Твой токен и настройки
-const bot = new Telegraf('8297728079:AAFRadxLDhZ61mPzcpspS0Sbfgjlv4a9Kvc');
+const bot = new Telegraf('8297728079:AAHN7k34m5Z_D5Z1ET7hYlUQTdTqA-ePiao');
 const app = express();
 
 app.use(cors());
