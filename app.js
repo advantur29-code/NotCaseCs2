@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 
-const bot = new Telegraf('8297728079:AAEubM12zGW6QYrVSRhzZCspHzFqw7tLrIM');
+const bot = new Telegraf('8297728079:AAEfJqSpL2kaJGvXNw9rbhp5cdRm3h7ptiw');
 const app = express();
 
 app.use(cors());
