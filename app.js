@@ -24,9 +24,9 @@ let users = {};
 if (fs.existsSync(DB_FILE)) {
     try {
         users = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-        console.log(`📦 База загружена: ${Object.keys(users).length} юзеров`);
+        console.log(`Base loaded: ${Object.keys(users).length} users`);
     } catch (e) { 
-        console.error("Ошибка базы, создаем новую");
+        console.error("DB Error, creating new");
         users = {}; 
     }
 }
@@ -35,13 +35,12 @@ const saveDB = () => {
     try {
         fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2), 'utf8');
     } catch (e) {
-        console.error("Ошибка записи:", e);
+        console.error("Save Error:", e);
     }
 };
 
-// --- API ДЛЯ ТВОЕГО MINI APP ---
+// --- API ДЛЯ MINI APP ---
 
-// 1. Синхронизация и создание юзера
 app.post('/sync-user', (req, res) => {
     const userId = req.body.userId?.toString();
     if (!userId) return res.status(400).json({ error: "No ID" });
@@ -61,7 +60,6 @@ app.post('/sync-user', (req, res) => {
     res.json(users[userId]);
 });
 
-// 2. Ежедневный бонус (раз в 24 часа)
 app.post('/daily-bonus', (req, res) => {
     const { userId } = req.body;
     const id = userId?.toString();
@@ -77,47 +75,19 @@ app.post('/daily-bonus', (req, res) => {
         saveDB();
         return res.json({ ok: true, newBalance: users[id].balance });
     }
-    res.status(400).json({ error: "Бонус уже получен сегодня!" });
+    res.status(400).json({ error: "Already claimed today" });
 });
 
-// 3. Проверка выполнения заданий
-app.post('/check-task', (req, res) => {
-    const { userId, taskId } = req.body;
-    const id = userId?.toString();
-    if (!id || !users[id]) return res.status(400).json({ error: "User not found" });
-    
-    if (users[id].completedTasks?.includes(taskId)) {
-        return res.status(400).json({ error: "Уже выполнено!" });
-    }
-    
-    let reward = 0;
-    if (taskId === 'sub_tg') reward = 50000;
-    if (taskId === 'join_chat') reward = 25000;
-    if (taskId === 'boost_tg') reward = 500000;
-    
-    if (reward > 0) {
-        users[id].balance += reward;
-        if (!users[id].completedTasks) users[id].completedTasks = [];
-        users[id].completedTasks.push(taskId);
-        saveDB();
-        return res.json({ ok: true, newBalance: users[id].balance });
-    }
-    res.status(400).json({ error: "Задание не найдено" });
-});
-
-// 4. Промокоды
 app.post('/apply-promo', (req, res) => {
     const { userId, promo } = req.body;
     const id = userId?.toString();
     if (!id || !users[id]) return res.status(400).json({ error: "User not found" });
 
     if (!users[id].usedPromos) users[id].usedPromos = [];
-    if (users[id].usedPromos.includes(promo.toLowerCase())) {
-        return res.status(400).json({ error: "Вы уже вводили этот код!" });
-    }
+    const code = promo.toLowerCase();
+    if (users[id].usedPromos.includes(code)) return res.status(400).json({ error: "Already used" });
 
     let bonus = 0;
-    const code = promo.toLowerCase();
     if (code === 'advantur') bonus = 1000000;
     if (code === 'start') bonus = 50000;
 
@@ -127,50 +97,47 @@ app.post('/apply-promo', (req, res) => {
         saveDB();
         return res.json({ ok: true, newBalance: users[id].balance });
     }
-    res.status(400).json({ error: "Промокод не существует" });
+    res.status(400).json({ error: "Invalid promo" });
 });
 
-// 5. Пополнение через Stars (обмен)
-app.post('/top-up', (req, res) => {
+// --- ПЛАТЕЖИ (STARS) ---
+
+app.post('/create-stars-invoice', async (req, res) => {
     const { userId, stars } = req.body;
-    const id = userId?.toString();
-    if (!id || !users[id]) return res.status(400).json({ error: "User not found" });
-
-    const amountNC = parseInt(stars) * 100; 
-    users[id].balance += amountNC;
-    saveDB();
-    res.json({ ok: true, newBalance: users[id].balance });
-});
-
-// 6. Быстрое сохранение баланса (кейсы)
-app.post('/update-balance', (req, res) => {
-    const { userId, balance } = req.body;
-    const id = userId?.toString();
-    if (id && users[id]) { 
-        users[id].balance = balance; 
-        saveDB(); 
-        res.json({ ok: true }); 
-    } else {
-        res.status(400).json({ error: "User not found" });
+    try {
+        const link = await bot.telegram.createInvoiceLink({
+            title: "Top up NC",
+            description: `Exchange ${stars} Stars for NC coins`,
+            payload: `stars_${userId}_${stars}`,
+            provider_token: "", 
+            currency: "XTR",
+            prices: [{ label: "Stars", amount: parseInt(stars) }]
+        });
+        res.json({ ok: true, link: link });
+    } catch (e) {
+        res.status(500).json({ error: "Invoice error" });
     }
 });
 
-// 7. Сохранение трейд-ссылки
-app.post('/save-trade', (req, res) => {
-    const { userId, tradeLink } = req.body;
-    const id = userId?.toString();
-    if (id && users[id]) { 
-        users[id].tradeLink = tradeLink; 
-        saveDB(); 
-        res.json({ ok: true }); 
+bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
+
+bot.on('successful_payment', async (ctx) => {
+    const payload = ctx.message.successful_payment.invoice_payload;
+    const [ , userId, stars] = payload.split('_');
+    
+    if (users[userId]) {
+        const amountNC = parseInt(stars) * 100;
+        users[userId].balance += amountNC;
+        saveDB();
+        await ctx.reply(`✅ Payment received! +${amountNC} NC`);
     }
 });
 
-// --- ЛОГИКА БОТА И РЕФЕРАЛКА ---
+// --- РЕФЕРАЛКА И СТАРТ ---
 
 bot.start(async (ctx) => {
     const userId = ctx.from.id.toString();
-    const startPayload = ctx.payload; // ID пригласителя
+    const startPayload = ctx.payload; 
     
     if (!users[userId]) {
         users[userId] = { 
@@ -182,57 +149,50 @@ bot.start(async (ctx) => {
             invitedBy: null 
         };
         
-        // РЕФЕРАЛЬНАЯ СИСТЕМА 3 УРОВНЯ
         if (startPayload && startPayload !== userId && users[startPayload]) {
-            // L1 (1000 NC)
             const L1 = startPayload.toString();
             users[userId].invitedBy = L1;
             users[L1].balance += 1000;
-            try { await bot.telegram.sendMessage(L1, `💰 +1,000 NC! Друг @${ctx.from.username || userId} в игре!`); } catch(e){}
+            try { await bot.telegram.sendMessage(L1, `💰 +1,000 NC! Friend @${ctx.from.username || userId} joined!`); } catch(e){}
 
-            // L2 (500 NC)
             const L2 = users[L1].invitedBy;
             if (L2 && users[L2]) {
                 users[L2].balance += 500;
-                try { await bot.telegram.sendMessage(L2, `📈 +500 NC! Реферал 2-го уровня в игре!`); } catch(e){}
+                try { await bot.telegram.sendMessage(L2, `📈 +500 NC! L2 Referral joined!`); } catch(e){}
 
-                // L3 (250 NC)
                 const L3 = users[L2].invitedBy;
                 if (L3 && users[L3]) {
                     users[L3].balance += 250;
-                    try { await bot.telegram.sendMessage(L3, `🔥 +250 NC! Реферал 3-го уровня в игре!`); } catch(e){}
+                    try { await bot.telegram.sendMessage(L3, `🔥 +250 NC! L3 Referral joined!`); } catch(e){}
                 }
             }
         }
         saveDB();
-        ctx.reply("Добро пожаловать в NotCase! 📦\nЗапускай приложение и открывай кейсы!");
+        ctx.reply("Welcome to NotCase! 📦\nOpen cases and earn!");
     } else { 
-        ctx.reply("С возвращением в NotCase!"); 
+        ctx.reply("Welcome back!"); 
     }
 });
 
-// Админка
+// --- АДМИНКА ---
+
 bot.command('admin', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    const count = Object.keys(users).length;
-    // Используем максимально простой текст для теста
-    ctx.reply("Admin Panel\nUsers: " + count + "\nCommand: /give [amount]");
+    ctx.reply(`Admin\nUsers: ${Object.keys(users).length}\n/give [amount]`);
 });
 
 bot.command('give', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const amount = parseInt(ctx.payload);
-    if (isNaN(amount)) return ctx.reply("Example: /give 5000");
-    Object.keys(users).forEach(id => { 
-        users[id].balance = (users[id].balance || 0) + amount; 
-    });
+    if (isNaN(amount)) return ctx.reply("Use: /give 5000");
+    Object.keys(users).forEach(id => { users[id].balance += amount; });
     saveDB();
-    ctx.reply("Done! Added " + amount + " NC to everyone.");
+    ctx.reply("Added " + amount + " NC to everyone.");
 });
 
-// --- ЗАПУСК ---
+// --- СТАРТ СЕРВЕРА ---
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log(`🚀 Сервер на порту ${PORT}`); 
+    console.log(`Server running on port ${PORT}`); 
     bot.launch(); 
 });
