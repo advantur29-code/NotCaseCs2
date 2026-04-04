@@ -80,27 +80,20 @@
         </div>
 
         <div class="profile-section">
-             <label style="font-size: 13px; color: #aaa;">Бонусы</label>
-             <button class="btn-main" style="background:#4caf50; color:white; margin-bottom:10px" onclick="claimDaily()">🎁 ЗАБРАТЬ 500 NC</button>
-             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button class="star-btn" onclick="doTask('sub_tg', 'https://t.me/TheCaseCs2')">📢 Канал</button>
-                <button class="star-btn" onclick="doTask('join_chat', 'https://t.me/+3Vp6w6MqO8FkNjEy')">💬 Чат</button>
-             </div>
+            <label style="font-size: 13px; color: #aaa;">Бонусы за поддержку</label>
+            <button class="btn-main" style="background:#4caf50; color:white; margin-bottom:10px" onclick="claimDaily()">🎁 ЕЖЕДНЕВНЫЙ БОНУС</button>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                <button class="star-btn" onclick="doTask('sub_tg', 'https://t.me/TheCaseCs2')">📢 Канал (+50к)</button>
+                <button class="star-btn" onclick="doTask('join_chat', 'https://t.me/+3Vp6w6MqO8FkNjEy')">💬 Чат (+25к)</button>
+            </div>
+            
+            <button class="btn-main" style="background: linear-gradient(to right, #8847ff, #d32ee6); color: white;" 
+                    onclick="doTask('boost_tg', 'https://t.me/boost/TheCaseCs2')">
+                🚀 ПРОГОЛОСОВАТЬ ЗА КАНАЛ (+500к NC)
+            </button>
         </div>
-        <div class="profile-section">
-    <label style="font-size: 13px; color: #aaa;">Бонусы за поддержку</label>
-    <button class="btn-main" style="background:#4caf50; color:white; margin-bottom:10px" onclick="claimDaily()">🎁 ЕЖЕДНЕВНЫЙ БОНУС</button>
-    
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-        <button class="star-btn" onclick="doTask('sub_tg', 'https://t.me/TheCaseCs2')">📢 Канал (+50к)</button>
-        <button class="star-btn" onclick="doTask('join_chat', 'https://t.me/+3Vp6w6MqO8FkNjEy')">💬 Чат (+25к)</button>
-    </div>
-    
-    <button class="btn-main" style="background: linear-gradient(to right, #8847ff, #d32ee6); color: white;" 
-            onclick="doTask('boost_tg', 'https://t.me/boost/TheCaseCs2')">
-        🚀 ПРОГОЛОСОВАТЬ ЗА КАНАЛ (+500к NC)
-    </button>
-    </div>
+
         <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Промокод</label>
             <input type="text" id="promoInput" placeholder="Введите промокод...">
