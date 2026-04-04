@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 
 // --- НАСТРОЙКИ ---
+// Твой токен и ID админа (Advantur)
 const bot = new Telegraf('8297728079:AAHb8-Sys7zF9ma68vLsa4Vzw2lOWerp8NM');
 const app = express();
 const ADMIN_ID = 8019223768; 
@@ -23,10 +24,11 @@ app.use((req, res, next) => {
 let users = {};
 if (fs.existsSync(DB_FILE)) {
     try {
-        users = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+        const data = fs.readFileSync(DB_FILE, 'utf8');
+        users = JSON.parse(data);
         console.log(`Base loaded: ${Object.keys(users).length} users`);
     } catch (e) { 
-        console.error("DB Error");
+        console.error("DB Error, creating new...");
         users = {}; 
     }
 }
@@ -41,7 +43,7 @@ const saveDB = () => {
 
 // --- API ДЛЯ MINI APP ---
 
-// Синхронизация и создание юзера
+// Синхронизация юзера
 app.post('/sync-user', (req, res) => {
     const userId = req.body.userId?.toString();
     if (!userId) return res.status(400).json({ error: "No ID" });
@@ -54,7 +56,8 @@ app.post('/sync-user', (req, res) => {
             completedTasks: [], 
             lastBonus: null, 
             tradeLink: "",
-            invitedBy: null
+            invitedBy: null,
+            inventory: [] // Добавили поле для инвентаря на будущее
         };
         saveDB();
     }
@@ -79,13 +82,13 @@ app.post('/update-balance', (req, res) => {
     const { userId, balance } = req.body;
     const id = userId?.toString();
     if (users[id]) {
-        users[id].balance = balance;
+        users[id].balance = parseInt(balance);
         saveDB();
         res.json({ ok: true });
     }
 });
 
-// Проверка заданий (Подписки, Чаты, Буст)
+// Проверка заданий
 app.post('/check-task', (req, res) => {
     const { userId, taskId } = req.body;
     const id = userId?.toString();
@@ -97,7 +100,7 @@ app.post('/check-task', (req, res) => {
     let reward = 0;
     if (taskId === 'sub_tg') reward = 50000;
     if (taskId === 'join_chat') reward = 25000;
-    if (taskId === 'boost_tg') reward = 500000; // Твой бонус 500к за буст
+    if (taskId === 'boost_tg') reward = 500000;
 
     if (reward > 0) {
         users[id].balance += reward;
@@ -108,6 +111,7 @@ app.post('/check-task', (req, res) => {
     res.status(400).json({ error: "Unknown task" });
 });
 
+// Ежедневный бонус
 app.post('/daily-bonus', (req, res) => {
     const { userId } = req.body;
     const id = userId?.toString();
@@ -126,6 +130,7 @@ app.post('/daily-bonus', (req, res) => {
     res.status(400).json({ error: "Already claimed today" });
 });
 
+// Промокоды
 app.post('/apply-promo', (req, res) => {
     const { userId, promo } = req.body;
     const id = userId?.toString();
@@ -162,6 +167,7 @@ app.post('/create-stars-invoice', async (req, res) => {
         });
         res.json({ ok: true, link: link });
     } catch (e) {
+        console.error("Invoice Link Error:", e);
         res.status(500).json({ error: "Invoice error" });
     }
 });
@@ -173,7 +179,8 @@ bot.on('successful_payment', async (ctx) => {
     const [ , userId, stars] = payload.split('_');
     
     if (users[userId]) {
-        const amountNC = parseInt(stars) * 100;
+        // ИСПРАВЛЕНО: Курс 1 Star = 7500 NC
+        const amountNC = parseInt(stars) * 7500; 
         users[userId].balance += amountNC;
         saveDB();
         await ctx.reply(`✅ Оплата принята! +${amountNC.toLocaleString()} NC зачислено.`);
@@ -192,20 +199,27 @@ bot.start(async (ctx) => {
             usedPromos: [], 
             completedTasks: [], 
             tradeLink: "", 
-            invitedBy: null 
+            invitedBy: null,
+            inventory: []
         };
         
         if (startPayload && startPayload !== userId && users[startPayload]) {
             const L1 = startPayload.toString();
             users[userId].invitedBy = L1;
             users[L1].balance += 1000;
-            try { await bot.telegram.sendMessage(L1, `💰 +1,000 NC! По вашей ссылке зашел @${ctx.from.username || userId}`); } catch(e){}
+            try { 
+                await bot.telegram.sendMessage(L1, `💰 +1,000 NC! По вашей ссылке зашел @${ctx.from.username || 'Новый игрок'}`); 
+            } catch(e){}
         }
         saveDB();
-        ctx.reply("Добро пожаловать в NotCase! 📦\nОткрывай кейсы и собирай инвентарь.");
-    } else { 
-        ctx.reply("С возвращением!"); 
     }
+    
+    ctx.reply(
+        "Добро пожаловать в NotCase! 📦\nОткрывай кейсы и собирай инвентарь.",
+        Markup.inlineKeyboard([
+            [Markup.button.webApp("ОТКРЫТЬ ПРИЛОЖЕНИЕ", "https://твоя-ссылка.com")] 
+        ])
+    );
 });
 
 // --- АДМИНКА ---
@@ -218,9 +232,11 @@ bot.command('give', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const amount = parseInt(ctx.payload);
     if (isNaN(amount)) return ctx.reply("Пример: /give 5000");
-    Object.keys(users).forEach(id => { users[id].balance += amount; });
+    Object.keys(users).forEach(id => { 
+        users[id].balance += amount; 
+    });
     saveDB();
-    ctx.reply(`Раздали по ${amount} NC всем игрокам!`);
+    ctx.reply(`🎁 Раздали по ${amount.toLocaleString()} NC всем игрокам!`);
 });
 
 // --- СТАРТ ---
