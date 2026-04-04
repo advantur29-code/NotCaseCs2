@@ -25,7 +25,7 @@
         .item.pink { border-color: var(--pink); }
         .item.red { border-color: var(--red); }
         .item.gold { border-color: var(--gold); }
-        .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; }
+        .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; cursor: pointer; }
         .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-withdraw, .btn-sell { color: white; border: none; font-size: 10px; padding: 4px; border-radius: 4px; margin-top: 5px; cursor: pointer; width: 90%; }
         .btn-withdraw { background: #eb4b4b; }
@@ -47,14 +47,14 @@
 <body>
 
     <div class="header">
-        <div>NotCase ??</div>
+        <div>NotCase 📦</div>
         <div class="balance" id="balanceDisplay">0 NC</div>
     </div>
 
     <div id="caseModal" class="case-modal">
-        <div class="close-modal" onclick="closeCase()">?</div>
+        <div class="close-modal" onclick="closeCase()">✖</div>
         <h2 id="modalTitle" style="text-align:center">Кейс</h2>
-        <div class="roulette-wrapper">
+        <div class="rou roulette-wrapper">
             <div class="pointer"></div>
             <div id="line" class="cases-line"></div>
         </div>
@@ -68,27 +68,27 @@
     </div>
 
     <div id="page-cases" class="page active">
-        <div class="case-card" onclick="openCase('poor')"><h3>?? Бомж-Кейс</h3><div style="color:gold">10 NC</div></div>
-        <div class="case-card" onclick="openCase('norm')"><h3>?? Обычный Кейс</h3><div style="color:gold">15,000 NC</div></div>
-        <div class="case-card" onclick="openCase('rich')"><h3>?? Кейс Миллионера</h3><div style="color:gold">2,500,000 NC</div></div>
+        <div class="case-card" onclick="openCase('poor')"><h3>📦 Бомж-Кейс</h3><div style="color:gold">10 NC</div></div>
+        <div class="case-card" onclick="openCase('norm')"><h3>💼 Обычный Кейс</h3><div style="color:gold">15,000 NC</div></div>
+        <div class="case-card" onclick="openCase('rich')"><h3>💎 Кейс Миллионера</h3><div style="color:gold">2,500,000 NC</div></div>
     </div>
 
     <div id="page-profile" class="page">
         <div class="profile-section">
-            <div id="userTitle" style="font-weight: bold; font-size: 1.1rem;">?? Загрузка...</div>
+            <div id="userTitle" style="font-weight: bold; font-size: 1.1rem;">👤 Загрузка...</div>
             <div id="userIdDisplay" style="font-size:12px; color:gray">ID: ---</div>
         </div>
 
         <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Бонусы за поддержку</label>
-            <button class="btn-main" style="background:#4caf50; color:white; margin-bottom:10px" onclick="claimDaily()">?? ЕЖЕДНЕВНЫЙ БОНУС</button>
+            <button class="btn-main" style="background:#4caf50; color:white; margin-bottom:10px" onclick="claimDaily()">🎁 ЕЖЕДНЕВНЫЙ БОНУС</button>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-                <button class="star-btn" onclick="doTask('sub_tg', 'https://t.me/TheCaseCs2')">?? Канал (+50к)</button>
-                <button class="star-btn" onclick="doTask('join_chat', 'https://t.me/+3Vp6w6MqO8FkNjEy')">?? Чат (+25к)</button>
+                <button class="star-btn" onclick="doTask('sub_tg', 'https://t.me/TheCaseCs2')">📢 Канал (+50к)</button>
+                <button class="star-btn" onclick="doTask('join_chat', 'https://t.me/+3Vp6w6MqO8FkNjEy')">💬 Чат (+25к)</button>
             </div>
             <button class="btn-main" style="background: linear-gradient(to right, #8847ff, #d32ee6); color: white;" 
                     onclick="doTask('boost_tg', 'https://t.me/boost/TheCaseCs2')">
-                ?? ПРОГОЛОСОВАТЬ ЗА КАНАЛ (+500к NC)
+                🚀 ПРОГОЛОСОВАТЬ ЗА КАНАЛ (+500к NC)
             </button>
         </div>
 
@@ -112,21 +112,21 @@
 
     <div id="page-shop" class="page">
         <div class="stars-grid">
-            <button class="star-btn" onclick="setStars(10)">? 10</button>
-            <button class="star-btn" onclick="setStars(50)">? 50</button>
-            <button class="star-btn" onclick="setStars(100)">? 100</button>
-            <button class="star-btn" onclick="setStars(500)">? 500</button>
+            <button class="star-btn" onclick="setStars(10)">⭐ 10</button>
+            <button class="star-btn" onclick="setStars(50)">⭐ 50</button>
+            <button class="star-btn" onclick="setStars(100)">⭐ 100</button>
+            <button class="star-btn" onclick="setStars(500)">⭐ 500</button>
         </div>
         <div style="text-align:center; margin-bottom:20px;">
-            <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:80px; text-align:center"> ? = <span id="ncOut" style="color:gold; font-weight:bold">1000</span> NC
+            <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:80px; text-align:center"> ⭐ = <span id="ncOut" style="color:gold; font-weight:bold">1000</span> NC
         </div>
         <button class="btn-main" onclick="topUp()">ПОПОЛНИТЬ ЧЕРЕЗ STARS</button>
     </div>
 
     <nav class="nav">
-        <div id="nav-cases" class="nav-item active" onclick="nav('cases')">??<br>Кейсы</div>
-        <div id="nav-profile" class="nav-item" onclick="nav('profile')">??<br>Профиль</div>
-        <div id="nav-shop" class="nav-item" onclick="nav('shop')">?<br>Магазин</div>
+        <div id="nav-cases" class="nav-item active" onclick="nav('cases')">📦<br>Кейсы</div>
+        <div id="nav-profile" class="nav-item" onclick="nav('profile')">👤<br>Профиль</div>
+        <div id="nav-shop" class="nav-item" onclick="nav('shop')">💰<br>Магазин</div>
     </nav>
 
     <script>
@@ -159,13 +159,15 @@
         async function syncWithServer() {
             const user = tg.initDataUnsafe.user;
             if(!user) return;
-            const res = await fetch(`${SERVER_URL}/sync-user`, {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId: user.id, username: user.username })
-            });
-            const data = await res.json();
-            balance = data.balance;
-            updateUI();
+            try {
+                const res = await fetch(`${SERVER_URL}/sync-user`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: user.id, username: user.username })
+                });
+                const data = await res.json();
+                balance = data.balance;
+                updateUI();
+            } catch(e) { console.error("Sync error"); }
         }
 
         async function doTask(taskId, link) {
@@ -186,7 +188,7 @@
                 body: JSON.stringify({ userId: tg.initDataUnsafe.user.id })
             });
             const data = await res.json();
-            if(data.ok) { tg.showAlert("?? +500 NC!"); balance = data.newBalance; updateUI(); }
+            if(data.ok) { tg.showAlert("🎁 +500 NC!"); balance = data.newBalance; updateUI(); }
         }
 
         function updateUI() {
@@ -279,18 +281,15 @@
             const line = document.getElementById('line');
             line.innerHTML = '';
             
-            // ЛОГИКА: ВСЕГДА ВЫПАДАЕТ НИЧЕГО
             const win = skins.empty; 
 
             const totalItems = 60;
             const winIndex = 55;
             
-            // В самой ленте крутятся реальные скины для азарта
             let c = config[type];
             let spinPool = [...c.pool, c.rare]; 
 
             for(let i=0; i<totalItems; i++) {
-                // В выигрышный слот ставим "Ничего", в остальные - случайные скины
                 let s = (i === winIndex) ? win : spinPool[Math.floor(Math.random() * spinPool.length)];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
             }
@@ -318,7 +317,7 @@
         function init() {
             if(tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 const user = tg.initDataUnsafe.user;
-                document.getElementById('userTitle').innerText = "?? " + (user.first_name || "User");
+                document.getElementById('userTitle').innerText = "👤 " + (user.first_name || "User");
                 document.getElementById('userIdDisplay').innerText = "ID: " + user.id;
                 document.getElementById('refLink').value = "https://t.me/notcasecs2_bot?start=" + user.id;
                 syncWithServer();
