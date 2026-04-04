@@ -39,9 +39,8 @@ bot.command('admin', (ctx) => {
 
 bot.action('admin_stats', (ctx) => {
     if (!isAdmin(ctx)) return;
-    const userCount = Object.keys(users).length;
     ctx.answerCbQuery();
-    ctx.reply(`Юзеров: ${userCount}`);
+    ctx.reply(`Всего юзеров: ${Object.keys(users).length}`);
 });
 
 bot.action('admin_give_money', (ctx) => {
@@ -53,7 +52,7 @@ bot.action('admin_give_money', (ctx) => {
 
 // --- API ДЛЯ КЛИЕНТА ---
 
-// ИСПРАВЛЕНО: Теперь sync-user не затирает данные о промокодах
+// 1. Синхронизация (ИСПРАВЛЕНО: добавляем новые поля, чтобы не было багов)
 app.post('/sync-user', (req, res) => {
     const userId = req.body.userId?.toString();
     if (!userId) return res.status(400).send("No ID");
@@ -62,24 +61,76 @@ app.post('/sync-user', (req, res) => {
         users[userId] = { 
             username: req.body.username || 'unknown', 
             balance: 1000000, 
-            usedPromos: [], // Создаем пустой список при регистрации
-            tradeLink: "" 
+            usedPromos: [], 
+            completedTasks: [], // Поле для заданий
+            lastBonus: null,    // Поле для ежедневки
+            tradeLink: "",
+            invitedBy: null
         };
     } else {
-        // Если юзер есть, проверяем наличие массива промокодов (на случай старой базы)
+        // Проверяем наличие полей у старых юзеров
         if (!users[userId].usedPromos) users[userId].usedPromos = [];
+        if (!users[userId].completedTasks) users[userId].completedTasks = [];
     }
     
     saveDB();
     res.json(users[userId]);
 });
 
+// 2. Ежедневный бонус 500 монет
+app.post('/daily-bonus', (req, res) => {
+    const { userId } = req.body;
+    const id = userId?.toString();
+    if (!id || !users[id]) return res.status(400).json({ error: "User not found" });
+
+    const now = new Date();
+    const lastBonus = users[id].lastBonus ? new Date(users[id].lastBonus) : null;
+
+    if (!lastBonus || (now - lastBonus) > 24 * 60 * 60 * 1000) {
+        users[id].balance += 500;
+        users[id].lastBonus = now.toISOString();
+        saveDB();
+        return res.json({ ok: true, newBalance: users[id].balance });
+    } else {
+        const diff = 24 * 60 * 60 * 1000 - (now - lastBonus);
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        return res.status(400).json({ error: `Приходи через ${hours} ч.` });
+    }
+});
+
+// 3. Выполнение заданий
+app.post('/check-task', (req, res) => {
+    const { userId, taskId } = req.body;
+    const id = userId?.toString();
+    
+    if (!id || !users[id]) return res.status(400).json({ error: "User not found" });
+    if (!users[id].completedTasks) users[id].completedTasks = [];
+
+    if (users[id].completedTasks.includes(taskId)) {
+        return res.status(400).json({ error: "Уже выполнено!" });
+    }
+
+    let reward = 0;
+    if (taskId === 'sub_tg') reward = 50000;
+    if (taskId === 'join_chat') reward = 25000;
+    if (taskId === 'boost_tg') reward = 500000;
+
+    if (reward > 0) {
+        users[id].balance += reward;
+        users[id].completedTasks.push(taskId);
+        saveDB();
+        return res.json({ ok: true, newBalance: users[id].balance });
+    }
+    res.status(400).json({ error: "Задание не найдено" });
+});
+
+// 4. Промокоды (ИСПРАВЛЕНО: одна рабочая функция)
 app.post('/apply-promo', (req, res) => {
     const userId = req.body.userId?.toString();
     const promo = (req.body.promo || "").toUpperCase();
 
     if (userId && users[userId]) {
-        if (!users[userId].usedPromos) users[userId].usedPromos = [];
+        if (!Array.isArray(users[userId].usedPromos)) users[userId].usedPromos = [];
         
         if (users[userId].usedPromos.includes(promo)) {
             return res.status(400).json({ error: 'Уже использовано!' });
@@ -91,7 +142,7 @@ app.post('/apply-promo', (req, res) => {
 
         if (bonus > 0) {
             users[userId].balance += bonus;
-            users[userId].usedPromos.push(promo); // Сохраняем использование
+            users[userId].usedPromos.push(promo);
             saveDB();
             return res.json({ ok: true, newBalance: users[userId].balance });
         }
@@ -99,7 +150,7 @@ app.post('/apply-promo', (req, res) => {
     res.status(400).json({ error: 'Неверный код' });
 });
 
-// ДОБАВЛЕНО: Обработка вывода (теперь сообщения будут приходить тебе)
+// 5. Вывод предметов
 app.post('/withdraw-item', async (req, res) => {
     const { userId, item } = req.body;
     const id = userId?.toString();
@@ -107,23 +158,13 @@ app.post('/withdraw-item', async (req, res) => {
     if (id && users[id]) {
         const username = users[id].username || "Неизвестно";
         const trade = users[id].tradeLink || "Ссылка не указана";
-
         try {
-            // Отправляем сообщение тебе в личку
             await bot.telegram.sendMessage(ADMIN_ID, 
-                `📦 **ЗАЯВКА НА ВЫВОД**\n\n` +
-                `👤 Юзер: @${username} (ID: ${id})\n` +
-                `🔫 Предмет: ${item}\n` +
-                `🔗 Трейд: ${trade}`
+                `📦 **ЗАЯВКА НА ВЫВОД**\n\n👤 Юзер: @${username}\n🔫 Предмет: ${item}\n🔗 Трейд: ${trade}`
             );
             res.json({ ok: true });
-        } catch (e) {
-            console.error("Ошибка отправки в бот:", e);
-            res.status(500).json({ error: "Ошибка при уведомлении админа" });
-        }
-    } else {
-        res.status(404).json({ error: "User not found" });
-    }
+        } catch (e) { res.status(500).json({ error: "Ошибка ТГ" }); }
+    } else { res.status(404).json({ error: "User not found" }); }
 });
 
 app.post('/save-trade', (req, res) => {
@@ -132,96 +173,47 @@ app.post('/save-trade', (req, res) => {
         users[userId].tradeLink = tradeLink;
         saveDB();
         res.json({ ok: true });
-    } else {
-        res.status(400).send("User not found");
-    }
+    } else { res.status(400).send("User not found"); }
 });
 
-app.post('/update-balance', (req, res) => {
-    const { userId, balance } = req.body;
-    if (userId && users[userId]) {
-        users[userId].balance = balance;
-        saveDB();
-        res.json({ ok: true });
-    } else {
-        res.status(400).send("Error");
-    }
-});
-
-app.post('/create-invoice', async (req, res) => {
-    const { userId, stars } = req.body;
-    try {
-        const link = await bot.telegram.createInvoiceLink({
-            title: "Пополнение",
-            description: "Stars -> NC",
-            payload: userId.toString(),
-            provider_token: "",
-            currency: "XTR",
-            prices: [{ label: "Stars", amount: parseInt(stars) }]
-        });
-        res.json({ url: link });
-    } catch (e) { res.status(500).json({ error: "API Error" }); }
-});
-
-bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
-bot.on('successful_payment', (ctx) => {
-    const userId = ctx.message.successful_payment.invoice_payload;
-    const amount = ctx.message.successful_payment.total_amount * 100;
-    if (users[userId]) {
-        users[userId].balance += amount;
-        saveDB();
-        ctx.reply("Зачислено!");
-    }
-});
-
-// --- ОБНОВЛЕННАЯ РЕФЕРАЛЬНАЯ СИСТЕМА ---
+// --- БОТ И РЕФЕРАЛЫ ---
 
 bot.start(async (ctx) => {
     const userId = ctx.from.id.toString();
-    const startPayload = ctx.payload; // Получаем ID того, кто пригласил (из ссылки ?start=ID)
+    const startPayload = ctx.payload;
 
-    // Если пользователя еще нет в базе
     if (!users[userId]) {
         users[userId] = { 
             username: ctx.from.username || 'unknown', 
             balance: 1000000, 
             usedPromos: [],
+            completedTasks: [],
             tradeLink: "",
-            invitedBy: null // По умолчанию никем не приглашен
+            invitedBy: null 
         };
 
-        // ЛОГИКА РЕФЕРАЛОВ
         if (startPayload && startPayload !== userId) {
-            const referrerId = startPayload; // ID того, кто пригласил (Уровень 1)
-
-            if (users[referrerId]) {
-                // 1. Начисляем 500 NC пригласившему (Уровень 1)
-                users[referrerId].balance += 500;
-                users[userId].invitedBy = referrerId; // Записываем, кто пригласил новичка
-
+            const refId = startPayload;
+            if (users[refId]) {
+                users[refId].balance += 500;
+                users[userId].invitedBy = refId;
                 try {
-                    await bot.telegram.sendMessage(referrerId, 
-                        `🤝 **Новый реферал!**\n@${users[userId].username} перешел по твоей ссылке.\n💰 Тебе начислено: **500 NC**`
-                    );
-                } catch (e) { console.log("Ошибка уведомления реферера L1"); }
+                    await bot.telegram.sendMessage(refId, `🤝 **+500 NC!** @${users[userId].username} зашел по ссылке!`);
+                } catch (e) {}
 
-                // 2. Начисляем 150 NC тому, кто пригласил пригласившего (Уровень 2 - "Дедушка")
-                const grandReferrerId = users[referrerId].invitedBy;
-                if (grandReferrerId && users[grandReferrerId]) {
-                    users[grandReferrerId].balance += 150;
+                const grandId = users[refId].invitedBy;
+                if (grandId && users[grandId]) {
+                    users[grandId].balance += 150;
                     try {
-                        await bot.telegram.sendMessage(grandReferrerId, 
-                            `📈 **Бонус 2-го уровня!**\nДруг твоего друга (@${users[userId].username}) присоединился!\n💰 Тебе начислено: **150 NC**`
-                        );
-                    } catch (e) { console.log("Ошибка уведомления реферера L2"); }
+                        await bot.telegram.sendMessage(grandId, `📈 **+150 NC!** Реферал 2-го уровня.`);
+                    } catch (e) {}
                 }
             }
         }
-        
         saveDB();
-        ctx.reply("Добро пожаловать в NotCase! Бонус за регистрацию начислен. 💎");
+        ctx.reply("Добро пожаловать в NotCase! 💎");
     } else {
-        ctx.reply("С возвращением! Твой баланс: " + users[userId].balance.toLocaleString() + " NC");
+        ctx.reply("С возвращением!");
     }
 });
 
