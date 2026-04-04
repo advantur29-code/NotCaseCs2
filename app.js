@@ -1,4 +1,4 @@
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf'); // Добавили Markup для кнопок
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const ADMIN_ID = 8019223768;
+const ADMIN_ID = 8019223768; // Твой ID
 const DB_FILE = 'database.json';
 
 // --- ЗАГРУЗКА БАЗЫ ---
@@ -27,23 +27,85 @@ if (fs.existsSync(DB_FILE)) {
 
 const saveDB = () => fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
 
+// --- АДМИН ПАНЕЛЬ (ЛОГИКА) ---
+
+// Проверка на админа
+const isAdmin = (ctx) => ctx.from.id === ADMIN_ID;
+
+bot.command('admin', (ctx) => {
+    if (!isAdmin(ctx)) return ctx.reply("❌ У тебя нет прав администратора.");
+    
+    const userCount = Object.keys(users).length;
+    ctx.reply(`🛠 **Админ-панель NotCase**\n\nВсего пользователей в базе: ${userCount}`, 
+    Markup.inlineKeyboard([
+        [Markup.button.callback("📢 Сделать рассылку", "admin_broadcast")],
+        [Markup.button.callback("💰 Выдать всем 1.000.000 NC", "admin_give_money")],
+        [Markup.button.callback("📊 Статистика базы", "admin_stats")]
+    ]));
+});
+
+// Обработка кнопок админки
+bot.action('admin_stats', (ctx) => {
+    if (!isAdmin(ctx)) return;
+    const userCount = Object.keys(users).length;
+    let totalBalance = 0;
+    Object.values(users).forEach(u => totalBalance += (u.balance || 0));
+    
+    ctx.answerCbQuery();
+    ctx.reply(`📊 **Статистика:**\nЮзеров: ${userCount}\nОбщий банк NC: ${totalBalance.toLocaleString()}`);
+});
+
+bot.action('admin_give_money', (ctx) => {
+    if (!isAdmin(ctx)) return;
+    Object.keys(users).forEach(id => {
+        users[id].balance += 1000000;
+    });
+    saveDB();
+    ctx.answerCbQuery("Баланс выдан!");
+    ctx.reply("✅ Всем пользователям начислено по 1,000,000 NC!");
+});
+
+bot.action('admin_broadcast', (ctx) => {
+    if (!isAdmin(ctx)) return;
+    ctx.answerCbQuery();
+    ctx.reply("Напиши текст рассылки в ответ на это сообщение (используй команду /send текст)");
+});
+
+// Команда для рассылки: /send Привет всем!
+bot.command('send', async (ctx) => {
+    if (!isAdmin(ctx)) return;
+    const text = ctx.message.text.replace('/send', '').trim();
+    if (!text) return ctx.reply("Введите текст после команды /send");
+
+    const userIds = Object.keys(users);
+    let success = 0;
+
+    ctx.reply(`🚀 Начинаю рассылку на ${userIds.length} человек...`);
+
+    for (let id of userIds) {
+        try {
+            await bot.telegram.sendMessage(id, text);
+            success++;
+        } catch (e) {
+            console.log(`Не удалось отправить пользователю ${id}`);
+        }
+    }
+    ctx.reply(`✅ Рассылка завершена!\nДоставлено: ${success} из ${userIds.length}`);
+});
+
 // --- ОБРАБОТКА ПЛАТЕЖЕЙ STARS ---
 
-// 1. Подтверждение (ОБЯЗАТЕЛЬНО для появления синей кнопки)
 bot.on('pre_checkout_query', async (ctx) => {
     try {
         await ctx.answerPreCheckoutQuery(true);
-        console.log(`[STARS] PreCheckout OK для @${ctx.from.username}`);
     } catch (e) {
         console.error("❌ Ошибка PreCheckout:", e);
     }
 });
 
-// 2. Успешная оплата (начисление монет)
 bot.on('successful_payment', async (ctx) => {
     try {
         const payment = ctx.message.successful_payment;
-        // Мы передавали userId как payload строку
         const userId = payment.invoice_payload;
         const starsAmount = payment.total_amount;
         const bonusNC = starsAmount * 100;
@@ -51,22 +113,25 @@ bot.on('successful_payment', async (ctx) => {
         if (users[userId]) {
             users[userId].balance += bonusNC;
             saveDB();
-            console.log(`💰 ОПЛАТА ЗАЧИСЛЕНА: @${users[userId].username} +${bonusNC} NC`);
-            await ctx.reply(`✅ Успешно! Зачислено ${bonusNC.toLocaleString()} NC.\nБаланс: ${users[userId].balance.toLocaleString()} NC`);
+            await ctx.reply(`✅ Успешно! Зачислено ${bonusNC.toLocaleString()} NC.`);
         }
     } catch (e) {
         console.error("❌ Ошибка в successful_payment:", e);
     }
 });
 
-// --- КОМАНДЫ ---
+// --- КОМАНДЫ ПОЛЬЗОВАТЕЛЯ ---
 bot.start((ctx) => {
     const userId = ctx.from.id.toString();
     if (!users[userId]) {
-        users[userId] = { username: ctx.from.username || 'unknown', balance: 100000, usedPromos: [] };
+        users[userId] = { 
+            username: ctx.from.username || 'unknown', 
+            balance: 1000000, // Даем лям на старте как ты просил в sync-user
+            usedPromos: [] 
+        };
         saveDB();
     }
-    ctx.reply(`С 1 апреля! Твой баланс: ${users[userId].balance.toLocaleString()} NC. 🃏`);
+    ctx.reply(`Добро пожаловать в NotCase! Твой баланс: ${users[userId].balance.toLocaleString()} NC. 💎\nОткрывай кейсы в приложении!`);
 });
 
 // --- API ---
@@ -92,7 +157,7 @@ app.post('/apply-promo', (req, res) => {
 
         let bonus = 0;
         if (promo === 'WELCOME') bonus = 1000;
-        if (promo === 'CYGAN') bonus = 1670; // 1670 коинов, как просил
+        if (promo === 'CYGAN') bonus = 1670;
 
         if (bonus > 0) {
             users[userId].balance += bonus;
@@ -104,37 +169,40 @@ app.post('/apply-promo', (req, res) => {
     res.status(400).json({ error: 'Код неверный' });
 });
 
-// ФУНКЦИЯ СОЗДАНИЯ ИНВОЙСА (ИСПРАВЛЕНА)
 app.post('/create-invoice', async (req, res) => {
     const { userId, stars } = req.body;
-
-    if (!userId || !stars) {
-        return res.status(400).json({ error: "Нет ID или суммы" });
-    }
+    if (!userId || !stars) return res.status(400).json({ error: "Нет ID или суммы" });
 
     try {
         const amount = parseInt(stars);
-
-        // Передаем параметры ОБЪЕКТОМ {} - это решит проблему с "title is required"
         const invoiceLink = await bot.telegram.createInvoiceLink({
             title: "Пополнение баланса NotCase",
             description: `Обмен ${amount} Stars на игровые монеты NC`,
             payload: userId.toString(),
-            provider_token: "", // Для Stars всегда пусто
+            provider_token: "", 
             currency: "XTR",
             prices: [{ label: "Telegram Stars", amount: amount }]
         });
-
-        console.log(`✅ Ссылка создана для ${userId}`);
         res.json({ url: invoiceLink });
-
     } catch (e) {
-        console.error("❌ ОШИБКА TELEGRAM API:", e.description || e.message);
         res.status(500).json({ error: "Ошибка создания счета" });
     }
 });
+
+app.post('/update-balance', (req, res) => {
+    const { userId, balance } = req.body;
+    const id = userId?.toString();
+    if (id && users[id]) {
+        users[id].balance = balance;
+        saveDB();
+        res.json({ ok: true });
+    } else {
+        res.status(400).json({ error: "User not found" });
+    }
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 СЕРВЕР LIVE | ПОРТ ${PORT}`);
-    bot.launch().then(() => console.log('🤖 БОТ ЗАПУЩЕН'));
+    bot.launch().then(() => console.log('🤖 БОТ ЗАПУЩЕН. Напиши /admin в ТГ.'));
 });
