@@ -214,16 +214,20 @@ bot.start(async (ctx) => {
 // Админка
 bot.command('admin', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.reply(`Админка\nЮзеров: ${Object.keys(users).length}\n/give [сумма] - раздать всем`);
+    const count = Object.keys(users).length;
+    // Используем максимально простой текст для теста
+    ctx.reply("Admin Panel\nUsers: " + count + "\nCommand: /give [amount]");
 });
 
 bot.command('give', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const amount = parseInt(ctx.payload);
-    if (isNaN(amount)) return ctx.reply("Пример: /give 5000");
-    Object.keys(users).forEach(id => { users[id].balance += amount; });
+    if (isNaN(amount)) return ctx.reply("Example: /give 5000");
+    Object.keys(users).forEach(id => { 
+        users[id].balance = (users[id].balance || 0) + amount; 
+    });
     saveDB();
-    ctx.reply(`✅ Выдано по ${amount} NC каждому!`);
+    ctx.reply("Done! Added " + amount + " NC to everyone.");
 });
 
 // --- ЗАПУСК ---
