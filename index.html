@@ -82,12 +82,10 @@
         <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Бонусы за поддержку</label>
             <button class="btn-main" style="background:#4caf50; color:white; margin-bottom:10px" onclick="claimDaily()">🎁 ЕЖЕДНЕВНЫЙ БОНУС</button>
-            
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
                 <button class="star-btn" onclick="doTask('sub_tg', 'https://t.me/TheCaseCs2')">📢 Канал (+50к)</button>
                 <button class="star-btn" onclick="doTask('join_chat', 'https://t.me/+3Vp6w6MqO8FkNjEy')">💬 Чат (+25к)</button>
             </div>
-            
             <button class="btn-main" style="background: linear-gradient(to right, #8847ff, #d32ee6); color: white;" 
                     onclick="doTask('boost_tg', 'https://t.me/boost/TheCaseCs2')">
                 🚀 ПРОГОЛОСОВАТЬ ЗА КАНАЛ (+500к NC)
@@ -100,14 +98,13 @@
             <button class="btn-main" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
         </div>
         <div class="profile-section">
-            <label style="font-size: 13px; color: #aaa;">Трейд-ссылка (для вывода)</label>
+            <label style="font-size: 13px; color: #aaa;">Трейд-ссылка</label>
             <input type="text" id="tradeLinkInput" placeholder="https://steamcommunity.com/tradeoffer/...">
             <button class="btn-main" onclick="saveTradeLink()">СОХРАНИТЬ ССЫЛКУ</button>
         </div>
         <div class="profile-section">
             <label style="font-size: 13px; color: #aaa;">Твоя реферальная ссылка</label>
             <input type="text" id="refLink" readonly onclick="this.select()">
-            <p style="font-size: 10px; color: #777;">+500 NC за каждого друга</p>
         </div>
         <h3>Инвентарь</h3>
         <div id="inventoryGrid" class="inv-grid"></div>
@@ -175,25 +172,21 @@
             window.open(link, '_blank');
             setTimeout(async () => {
                 const res = await fetch(`${SERVER_URL}/check-task`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, taskId: taskId })
                 });
                 const data = await res.json();
                 if (data.ok) { tg.showAlert("Награда получена!"); balance = data.newBalance; updateUI(); }
-                else { tg.showAlert(data.error); }
             }, 5000);
         }
 
         async function claimDaily() {
             const res = await fetch(`${SERVER_URL}/daily-bonus`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ userId: tg.initDataUnsafe.user.id })
             });
             const data = await res.json();
             if(data.ok) { tg.showAlert("🎁 +500 NC!"); balance = data.newBalance; updateUI(); }
-            else { tg.showAlert(data.error); }
         }
 
         function updateUI() {
@@ -216,14 +209,12 @@
 
         async function applyPromo() {
             const code = document.getElementById('promoInput').value;
-            if(!code) return;
             const res = await fetch(`${SERVER_URL}/apply-promo`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, promo: code })
             });
             const data = await res.json();
-            if(res.ok) { tg.showAlert("Успешно!"); balance = data.newBalance; updateUI(); }
-            else { tg.showAlert(data.error); }
+            if(res.ok) { balance = data.newBalance; updateUI(); }
         }
 
         async function saveTradeLink() {
@@ -239,13 +230,7 @@
             const grid = document.getElementById('inventoryGrid');
             grid.innerHTML = '';
             inventory.forEach((item, index) => {
-                grid.innerHTML += `
-                    <div class="item ${item.color}">
-                        <img src="${item.img}" onerror="this.src='not.png'">
-                        <div style="font-size:9px; margin-top:2px;">${item.price} NC</div>
-                        <button class="btn-sell" onclick="sellItem(${index})">ПРОДАТЬ</button>
-                        <button class="btn-withdraw" onclick="withdrawItem(${index})">ВЫВЕСТИ</button>
-                    </div>`;
+                grid.innerHTML += `<div class="item ${item.color}"><img src="${item.img}" onerror="this.src='not.png'"><div style="font-size:9px;">${item.price} NC</div><button class="btn-sell" onclick="sellItem(${index})">ПРОДАТЬ</button></div>`;
             });
         }
 
@@ -257,20 +242,6 @@
             fastSaveBalance();
         }
 
-        async function withdrawItem(index) {
-            const item = inventory[index];
-            const res = await fetch(`${SERVER_URL}/withdraw-item`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, item: item.name })
-            });
-            if(res.ok) {
-                tg.showAlert("Заявка отправлена!");
-                inventory.splice(index, 1);
-                localStorage.setItem('nc_inv', JSON.stringify(inventory));
-                renderInventory();
-            }
-        }
-
         function openCase(type) {
             let c = config[type];
             document.getElementById('modalTitle').innerText = c.title;
@@ -279,8 +250,7 @@
             
             const pGrid = document.getElementById('poolGrid');
             pGrid.innerHTML = '';
-            const fullPool = [...c.pool, c.rare];
-            fullPool.forEach(s => {
+            [...c.pool, c.rare].forEach(s => {
                 pGrid.innerHTML += `<div class="pool-item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"><br>${s.name}</div>`;
             });
 
@@ -289,9 +259,8 @@
             line.style.transition = 'none';
             line.style.transform = 'translateX(0)';
             line.innerHTML = '';
-            
             for(let i=0; i<15; i++) {
-                let s = fullPool[Math.floor(Math.random() * fullPool.length)];
+                let s = [...c.pool, c.rare][Math.floor(Math.random() * ([...c.pool, c.rare].length))];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
             }
         }
@@ -309,21 +278,19 @@
 
             const line = document.getElementById('line');
             line.innerHTML = '';
-            let c = config[type];
-            let roll = Math.random() * 100;
-            let win;
+            
+            // ЛОГИКА: ВСЕГДА ВЫПАДАЕТ НИЧЕГО
+            const win = skins.empty; 
 
-            if (type === 'rich') {
-
-            win = skins.empty; 
-            } else {
-
-            win = (roll <= c.chance) ? c.rare : (c.pool.length > 0 ? c.pool[Math.floor(Math.random() * c.pool.length)] : skins.empty);
-            }
             const totalItems = 60;
             const winIndex = 55;
-            let spinPool = (type === 'rich') ? [skins.empty] : [...c.pool, c.rare, skins.empty];
+            
+            // В самой ленте крутятся реальные скины для азарта
+            let c = config[type];
+            let spinPool = [...c.pool, c.rare]; 
+
             for(let i=0; i<totalItems; i++) {
+                // В выигрышный слот ставим "Ничего", в остальные - случайные скины
                 let s = (i === winIndex) ? win : spinPool[Math.floor(Math.random() * spinPool.length)];
                 line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src='not.png'"></div>`;
             }
@@ -335,11 +302,7 @@
             }, 50);
 
             setTimeout(() => {
-                if (win.name !== "Ничего") { 
-                    inventory.push(win); 
-                    localStorage.setItem('nc_inv', JSON.stringify(inventory));
-                    tg.showAlert("ВЫПАЛО: " + win.name); 
-                } else tg.showAlert("Пусто!");
+                tg.showAlert("Пусто!");
                 btn.disabled = false;
                 updateUI();
             }, 5500);
