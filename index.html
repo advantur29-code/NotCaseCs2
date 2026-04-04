@@ -143,22 +143,35 @@
             rich: { title: "Кейс Миллионера", price: 2500000, pool: [skins.ak, skins.m4, skins.deagle], rare: skins.knife, chance: 10 }
         };
 
-        async function syncWithServer() {
-            const user = tg.initDataUnsafe.user;
-            if(!user) return;
-            try {
-                const response = await fetch(`${SERVER_URL}/sync-user`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.id, username: user.username }) 
-                });
-                const data = await response.json();
-                balance = data.balance;
-                document.getElementById('tradeLinkInput').value = data.tradeLink || '';
-                updateUI();
-            } catch (e) { console.error("Ошибка синхронизации"); }
-        }
+        // Функция для задания
+async function doTask(taskId, link) {
+    window.open(link, '_blank'); // Открываем ссылку
+    
+    // Спустя 5 секунд даем возможность забрать награду (или сразу)
+    const response = await fetch('ТВОЙ_URL/check-task', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ userId: myUserId, taskId: taskId })
+    });
+    
+    const data = await response.json();
+    if (data.ok) {
+        alert("Награда получена!");
+        updateBalanceOnUI(data.newBalance);
+    } else {
+        alert(data.error);
+    }
+}
 
+// Кнопка для ежедневки
+async function claimDaily() {
+    const response = await fetch('ТВОЙ_URL/daily-bonus', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ userId: myUserId })
+    });
+    // ... обработка как выше
+}
         function updateUI() {
             document.getElementById('balanceDisplay').innerText = balance.toLocaleString() + " NC";
             renderInventory();
