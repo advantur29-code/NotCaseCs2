@@ -13,20 +13,20 @@ const DB_FILE = 'database.json';
 app.use(cors());
 app.use(bodyParser.json());
 
-// Фикс кодировки для кириллицы
+// Фикс кодировки
 app.use((req, res, next) => {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     next();
 });
 
-// --- РАБОТА С БАЗОЙ ДАННЫХ ---
+// --- БАЗА ДАННЫХ ---
 let users = {};
 if (fs.existsSync(DB_FILE)) {
     try {
         users = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
         console.log(`Base loaded: ${Object.keys(users).length} users`);
     } catch (e) { 
-        console.error("DB Error, creating new");
+        console.error("DB Error");
         users = {}; 
     }
 }
@@ -41,6 +41,7 @@ const saveDB = () => {
 
 // --- API ДЛЯ MINI APP ---
 
+// Синхронизация и создание юзера
 app.post('/sync-user', (req, res) => {
     const userId = req.body.userId?.toString();
     if (!userId) return res.status(400).json({ error: "No ID" });
@@ -58,6 +59,53 @@ app.post('/sync-user', (req, res) => {
         saveDB();
     }
     res.json(users[userId]);
+});
+
+// Сохранение трейд-ссылки
+app.post('/save-trade', (req, res) => {
+    const { userId, tradeLink } = req.body;
+    const id = userId?.toString();
+    if (users[id]) {
+        users[id].tradeLink = tradeLink;
+        saveDB();
+        res.json({ ok: true });
+    } else {
+        res.status(404).json({ error: "User not found" });
+    }
+});
+
+// Обновление баланса (после продаж или спинов)
+app.post('/update-balance', (req, res) => {
+    const { userId, balance } = req.body;
+    const id = userId?.toString();
+    if (users[id]) {
+        users[id].balance = balance;
+        saveDB();
+        res.json({ ok: true });
+    }
+});
+
+// Проверка заданий (Подписки, Чаты, Буст)
+app.post('/check-task', (req, res) => {
+    const { userId, taskId } = req.body;
+    const id = userId?.toString();
+    if (!users[id]) return res.status(404).json({ error: "User not found" });
+
+    if (!users[id].completedTasks) users[id].completedTasks = [];
+    if (users[id].completedTasks.includes(taskId)) return res.status(400).json({ error: "Already done" });
+
+    let reward = 0;
+    if (taskId === 'sub_tg') reward = 50000;
+    if (taskId === 'join_chat') reward = 25000;
+    if (taskId === 'boost_tg') reward = 500000; // Твой бонус 500к за буст
+
+    if (reward > 0) {
+        users[id].balance += reward;
+        users[id].completedTasks.push(taskId);
+        saveDB();
+        return res.json({ ok: true, newBalance: users[id].balance });
+    }
+    res.status(400).json({ error: "Unknown task" });
 });
 
 app.post('/daily-bonus', (req, res) => {
@@ -100,14 +148,13 @@ app.post('/apply-promo', (req, res) => {
     res.status(400).json({ error: "Invalid promo" });
 });
 
-// --- ПЛАТЕЖИ (STARS) ---
-
+// --- STARS PAYMENTS ---
 app.post('/create-stars-invoice', async (req, res) => {
     const { userId, stars } = req.body;
     try {
         const link = await bot.telegram.createInvoiceLink({
-            title: "Top up NC",
-            description: `Exchange ${stars} Stars for NC coins`,
+            title: "Пополнение NC",
+            description: `Обмен ${stars} Stars на монеты NC`,
             payload: `stars_${userId}_${stars}`,
             provider_token: "", 
             currency: "XTR",
@@ -129,19 +176,18 @@ bot.on('successful_payment', async (ctx) => {
         const amountNC = parseInt(stars) * 100;
         users[userId].balance += amountNC;
         saveDB();
-        await ctx.reply(`✅ Payment received! +${amountNC} NC`);
+        await ctx.reply(`✅ Оплата принята! +${amountNC.toLocaleString()} NC зачислено.`);
     }
 });
 
-// --- РЕФЕРАЛКА И СТАРТ ---
-
+// --- РЕФЕРАЛКА ---
 bot.start(async (ctx) => {
     const userId = ctx.from.id.toString();
     const startPayload = ctx.payload; 
     
     if (!users[userId]) {
         users[userId] = { 
-            username: ctx.from.username || 'unknown', 
+            username: ctx.from.username || ctx.from.first_name, 
             balance: 10000, 
             usedPromos: [], 
             completedTasks: [], 
@@ -153,44 +199,31 @@ bot.start(async (ctx) => {
             const L1 = startPayload.toString();
             users[userId].invitedBy = L1;
             users[L1].balance += 1000;
-            try { await bot.telegram.sendMessage(L1, `💰 +1,000 NC! Friend @${ctx.from.username || userId} joined!`); } catch(e){}
-
-            const L2 = users[L1].invitedBy;
-            if (L2 && users[L2]) {
-                users[L2].balance += 500;
-                try { await bot.telegram.sendMessage(L2, `📈 +500 NC! L2 Referral joined!`); } catch(e){}
-
-                const L3 = users[L2].invitedBy;
-                if (L3 && users[L3]) {
-                    users[L3].balance += 250;
-                    try { await bot.telegram.sendMessage(L3, `🔥 +250 NC! L3 Referral joined!`); } catch(e){}
-                }
-            }
+            try { await bot.telegram.sendMessage(L1, `💰 +1,000 NC! По вашей ссылке зашел @${ctx.from.username || userId}`); } catch(e){}
         }
         saveDB();
-        ctx.reply("Welcome to NotCase! 📦\nOpen cases and earn!");
+        ctx.reply("Добро пожаловать в NotCase! 📦\nОткрывай кейсы и собирай инвентарь.");
     } else { 
-        ctx.reply("Welcome back!"); 
+        ctx.reply("С возвращением!"); 
     }
 });
 
 // --- АДМИНКА ---
-
 bot.command('admin', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.reply(`Admin\nUsers: ${Object.keys(users).length}\n/give [amount]`);
+    ctx.reply(`Статистика:\nЮзеров: ${Object.keys(users).length}\nКоманда: /give [сумма]`);
 });
 
 bot.command('give', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const amount = parseInt(ctx.payload);
-    if (isNaN(amount)) return ctx.reply("Use: /give 5000");
+    if (isNaN(amount)) return ctx.reply("Пример: /give 5000");
     Object.keys(users).forEach(id => { users[id].balance += amount; });
     saveDB();
-    ctx.reply("Added " + amount + " NC to everyone.");
+    ctx.reply(`Раздали по ${amount} NC всем игрокам!`);
 });
 
-// --- СТАРТ СЕРВЕРА ---
+// --- СТАРТ ---
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => { 
     console.log(`Server running on port ${PORT}`); 
