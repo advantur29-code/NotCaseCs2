@@ -97,10 +97,25 @@ app.post('/add-skin', (req, res) => {
         name: skin.name,
         img: skin.img,
         price: skin.price,
+        color: skin.color,
         factory: { active: false, incomeRate: 0, boostLevel: 0, breakAt: null, lastCollect: null }
     };
     if (!user.inventory) user.inventory = [];
     user.inventory.push(newSkin);
+    saveDB();
+    res.json({ ok: true });
+});
+
+app.post('/remove-skin', (req, res) => {
+    const { userId, skinId } = req.body;
+    const id = userId?.toString();
+    const user = users[id];
+    if (!user) return res.status(404).json({ error: "User not found" });
+    
+    const index = user.inventory.findIndex(s => s.id == skinId);
+    if (index === -1) return res.status(404).json({ error: "Skin not found" });
+    
+    user.inventory.splice(index, 1);
     saveDB();
     res.json({ ok: true });
 });
@@ -194,7 +209,7 @@ app.post('/track-referral', (req, res) => {
             if (!referrer.referrals.includes(newId)) referrer.referrals.push(newId);
             saveDB();
 
-            bot.telegram.sendMessage(parseInt(current), `🎁 +${reward} NC за приглашение ${level + 1} уровня!`).catch(e => {});
+            bot.telegram.sendMessage(parseInt(current), `🎁 +${reward} NC for referral level ${level + 1}!`).catch(e => {});
         }
         current = referrer?.invitedBy;
         level++;
@@ -306,7 +321,7 @@ app.post('/create-stars-invoice', async (req, res) => {
     const { userId, stars } = req.body;
     try {
         const link = await bot.telegram.createInvoiceLink({
-            title: "Пополнение NC",
+            title: "NotCase Deposit",
             description: `${stars} Stars → ${parseInt(stars) * 1000} NC`,
             payload: `stars_${userId}_${stars}`,
             provider_token: "",
@@ -327,7 +342,7 @@ bot.on('successful_payment', async (ctx) => {
     const amountNC = parseInt(stars) * 1000;
     user.balance += amountNC;
     saveDB();
-    await ctx.reply(`✅ +${amountNC.toLocaleString()} NC зачислено!`);
+    await ctx.reply(`✅ +${amountNC.toLocaleString()} NC credited!`);
 });
 
 bot.start(async (ctx) => {
@@ -345,14 +360,14 @@ bot.start(async (ctx) => {
     }
     saveDB();
 
-    ctx.reply("Добро пожаловать в NotCase!", Markup.inlineKeyboard([
-        [Markup.button.webApp("🎮 ИГРАТЬ", "https://твоя-ссылка.com")]
+    ctx.reply("🎮 Welcome to NotCase CS2!\nOpen the app to start opening cases and earning skins!", Markup.inlineKeyboard([
+        [Markup.button.webApp("🎲 OPEN NOTCASE", "https://твоя-ссылка.com")]
     ]));
 });
 
 bot.command('admin', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.reply(`👑 Админ панель\nЮзеров: ${Object.keys(users).length}\n\n/give [сумма] [userId?]\n/promo [code] [amount]`);
+    ctx.reply(`👑 Admin Panel\nUsers: ${Object.keys(users).length}\n\n/give [amount] [userId?]\n/promo [code] [amount]`);
 });
 
 bot.command('give', (ctx) => {
@@ -360,14 +375,14 @@ bot.command('give', (ctx) => {
     const parts = ctx.payload.split(' ');
     const amount = parseInt(parts[0]);
     const targetId = parts[1];
-    if (isNaN(amount)) return ctx.reply("Пример: /give 5000");
+    if (isNaN(amount)) return ctx.reply("Usage: /give 5000");
 
     if (targetId && users[targetId]) {
         users[targetId].balance += amount;
-        ctx.reply(`✅ Выдано ${amount} NC юзеру ${targetId}`);
+        ctx.reply(`✅ Given ${amount} NC to user ${targetId}`);
     } else {
         Object.keys(users).forEach(id => { users[id].balance += amount; });
-        ctx.reply(`✅ Раздали ${amount} NC всем!`);
+        ctx.reply(`✅ Given ${amount} NC to everyone!`);
     }
     saveDB();
 });
@@ -379,7 +394,7 @@ bot.command('promo', (ctx) => {
 
     if (!global.promoCodes) global.promoCodes = {};
     global.promoCodes[code.toLowerCase()] = parseInt(amount);
-    ctx.reply(`✅ Промокод ${code} на ${amount} NC создан`);
+    ctx.reply(`✅ Promo code ${code} for ${amount} NC created`);
 });
 
 const PORT = process.env.PORT || 10000;
