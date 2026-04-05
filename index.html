@@ -7,85 +7,123 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --blue: #4b69ff; --purple: #8847ff; --pink: #d32ee6; --red: #eb4b4b; --gold: #caab05; --gray: #333; --bg: #0b0b0b; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding-bottom: 80px; overflow-x: hidden; height: 100vh; display: flex; flex-direction: column; }
-        .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #151515; border-bottom: 1px solid #333; }
-        .balance { color: #ffca28; font-weight: bold; font-size: 1.1rem; }
-        .page { display: none; flex: 1; overflow-y: auto; padding: 20px; }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: white; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding-bottom: 80px; overflow-x: hidden; }
+        .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #151515; border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 20; }
+        .balance { color: #ffca28; font-weight: bold; font-size: 1.2rem; }
+        .page { display: none; flex: 1; overflow-y: auto; padding: 15px; }
         .page.active { display: block; }
-        .case-modal, .factory-modal, .withdraw-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; padding: 20px; box-sizing: border-box; overflow-y: auto; }
-        .close-modal { position: absolute; top: 20px; right: 20px; font-size: 30px; color: #666; cursor: pointer; z-index: 110; }
-        .roulette-wrapper { position: relative; width: 100%; height: 130px; background: #151515; border: 2px solid #333; overflow: hidden; margin: 20px 0; }
-        .pointer { position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; background: #ffca28; z-index: 10; transform: translateX(-50%); }
+        
+        /* Модалки */
+        .case-modal, .factory-modal, .withdraw-modal, .skin-actions-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; color: #888; cursor: pointer; z-index: 210; }
+        
+        /* Рулетка */
+        .roulette-wrapper { position: relative; width: 100%; height: 130px; background: #151515; border: 2px solid #333; overflow: hidden; margin: 20px 0; border-radius: 10px; }
+        .pointer { position: absolute; left: 50%; top: -5px; bottom: -5px; width: 4px; background: #ffca28; z-index: 15; transform: translateX(-50%); box-shadow: 0 0 10px gold; }
         .cases-line { display: flex; transition: transform 5s cubic-bezier(0.1, 0, 0.1, 1); will-change: transform; align-items: center; height: 100%; }
-        .item { min-width: 100px; width: 100px; height: 100px; margin: 0 5px; background: #222; border-bottom: 4px solid var(--blue); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; flex-shrink: 0; }
+        .item { min-width: 100px; width: 100px; height: 100px; margin: 0 5px; background: #222; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
         .item img { width: 60px; height: auto; object-fit: contain; }
-        .case-card { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px solid #333; cursor: pointer; transition: transform 0.2s; }
-        .case-card:hover { transform: scale(1.02); background: #222; }
-        .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        
+        /* Карточки кейсов */
+        .case-card { background: linear-gradient(135deg, #1a1a1a 0%, #111 100%); padding: 15px; border-radius: 16px; margin-bottom: 12px; text-align: center; border: 1px solid #333; cursor: pointer; transition: all 0.2s; }
+        .case-card:active { transform: scale(0.98); background: #222; }
+        .case-card h3 { margin: 0 0 8px 0; }
+        
+        .btn-main { width: 100%; background: #ffca28; color: black; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; transition: 0.2s; }
+        .btn-main:active { transform: scale(0.97); }
+        .btn-danger { background: #eb4b4b; color: white; }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-purple { background: linear-gradient(135deg, #8847ff, #d32ee6); color: white; }
+        
         .pool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
-        .pool-item { background: #1a1a1a; padding: 8px; border-radius: 8px; border-bottom: 3px solid var(--blue); text-align: center; font-size: 10px; }
-        .pool-item img { width: 45px; margin-bottom: 5px; }
-        .profile-section { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #222; }
-        .inv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-        .inventory-card { background: #1a1a1a; border-radius: 10px; padding: 8px; text-align: center; border-bottom: 3px solid gold; cursor: pointer; transition: 0.2s; }
-        .inventory-card:hover { background: #252525; }
-        .inventory-card img { width: 50px; height: 50px; object-fit: contain; }
-        .factory-badge { font-size: 10px; background: #4caf50; padding: 2px 6px; border-radius: 10px; display: inline-block; margin-top: 5px; }
-        input, select { background: #111; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; width: calc(100% - 22px); margin: 5px 0; }
-        .nav { position: fixed; bottom: 0; width: 100%; height: 70px; background: #151515; border-top: 1px solid #333; display: flex; z-index: 50; }
+        .pool-item { background: #1a1a1a; padding: 8px; border-radius: 10px; text-align: center; font-size: 10px; }
+        .pool-item img { width: 45px; margin-bottom: 5px; border-radius: 8px; }
+        
+        .profile-section { background: #1a1a1a; padding: 15px; border-radius: 16px; margin-bottom: 15px; border: 1px solid #222; }
+        .inv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 10px; }
+        .inventory-card { background: #1a1a1a; border-radius: 12px; padding: 10px; text-align: center; border: 1px solid #333; cursor: pointer; transition: 0.2s; }
+        .inventory-card:active { transform: scale(0.97); background: #252525; }
+        .inventory-card img { width: 60px; height: 60px; object-fit: contain; border-radius: 8px; }
+        .inventory-card .skin-name { font-size: 12px; font-weight: bold; margin: 5px 0; }
+        .inventory-card .skin-price { font-size: 10px; color: #ffca28; }
+        .factory-badge { font-size: 9px; background: #4caf50; padding: 3px 8px; border-radius: 20px; display: inline-block; margin-top: 5px; }
+        .broken-badge { background: #eb4b4b; }
+        
+        input, select { background: #111; border: 1px solid #444; color: white; padding: 12px; border-radius: 10px; width: 100%; margin: 5px 0; font-size: 14px; }
+        
+        .nav { position: fixed; bottom: 0; width: 100%; height: 70px; background: #151515; border-top: 1px solid #333; display: flex; z-index: 50; backdrop-filter: blur(10px); }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #666; cursor: pointer; transition: 0.2s; }
         .nav-item.active { color: #ffca28; }
-        .star-btn { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; cursor: pointer; margin: 5px; transition: 0.2s; }
-        .star-btn:hover { background: #333; }
+        .nav-item span { font-size: 22px; margin-bottom: 3px; }
+        
+        .star-btn { background: #222; border: 1px solid #444; color: white; padding: 10px 15px; border-radius: 10px; cursor: pointer; margin: 5px; transition: 0.2s; }
+        .star-btn:active { transform: scale(0.95); }
         .tab { display: flex; gap: 10px; margin-bottom: 15px; }
-        .tab-btn { flex: 1; background: #222; border: none; color: white; padding: 8px; border-radius: 8px; cursor: pointer; }
+        .tab-btn { flex: 1; background: #222; border: none; color: white; padding: 10px; border-radius: 10px; cursor: pointer; font-size: 14px; }
         .tab-btn.active { background: #ffca28; color: black; }
-        .broken { border-bottom-color: #eb4b4b !important; opacity: 0.6; }
-        @keyframes spin { 0% { transform: translateX(0); } 100% { transform: translateX(-1000px); } }
+        
+        .action-buttons { display: flex; gap: 10px; margin-top: 15px; }
+        .action-buttons button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
+        .sell-btn { background: #eb4b4b; color: white; }
+        .factory-btn { background: #4caf50; color: white; }
+        .cancel-btn { background: #444; color: white; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div>🔪 NotCase CS2</div>
+    <div>🔪 NotCase</div>
     <div class="balance" id="balanceDisplay">0 NC</div>
 </div>
 
-<!-- Кейс модалка -->
+<!-- Модалка кейса -->
 <div id="caseModal" class="case-modal">
     <div class="close-modal" onclick="closeCase()">✖</div>
     <h2 id="modalTitle" style="text-align:center">Кейс</h2>
     <div class="roulette-wrapper">
-        <div class="pointer">▼</div>
+        <div class="pointer"></div>
         <div id="line" class="cases-line"></div>
     </div>
     <button class="btn-main" id="modalSpinBtn">🔓 ОТКРЫТЬ КЕЙС</button>
     <p id="modalPrice" style="text-align:center; color:gold; margin-top:10px"></p>
-    <div style="margin-top:20px; font-weight:bold; color:#888; font-size:12px;">🎲 ВОЗМОЖНЫЙ ДРОП:</div>
+    <div style="margin-top:20px; font-weight:bold; color:#888;">🎲 ВОЗМОЖНЫЙ ДРОП:</div>
     <div id="poolGrid" class="pool-grid"></div>
 </div>
 
-<!-- Фабрика модалка -->
+<!-- Модалка фабрики -->
 <div id="factoryModal" class="factory-modal">
     <div class="close-modal" onclick="closeFactory()">✖</div>
     <h3 style="text-align:center" id="factorySkinName"></h3>
-    <img id="factorySkinImg" style="width:80px; display:block; margin:0 auto">
-    <div id="factoryInfo" style="margin:15px 0"></div>
-    <button class="btn-main" id="collectBtn" onclick="collectFactoryIncome()">💰 Собрать доход</button>
-    <button class="btn-main" style="background:#d32ee6" id="boostBtn" onclick="boostFactory()">🚀 Разгон (50%→25%→13%→5%)</button>
-    <button class="btn-main" style="background:#444" onclick="closeFactory()">Закрыть</button>
+    <img id="factorySkinImg" style="width:100px; display:block; margin:0 auto; border-radius:12px">
+    <div id="factoryInfo" style="margin:15px 0; text-align:center"></div>
+    <button class="btn-main" id="collectBtn">💰 СОБРАТЬ ДОХОД</button>
+    <button class="btn-main btn-purple" id="boostBtn">🚀 РАЗОГНАТЬ (50%→25%→13%→5%)</button>
+    <button class="btn-main" style="background:#444" onclick="closeFactory()">ЗАКРЫТЬ</button>
 </div>
 
-<!-- Вывод модалка -->
+<!-- Модалка действий со скином -->
+<div id="skinActionsModal" class="skin-actions-modal">
+    <div class="close-modal" onclick="closeSkinActions()">✖</div>
+    <h3 style="text-align:center" id="actionSkinName"></h3>
+    <img id="actionSkinImg" style="width:100px; display:block; margin:0 auto; border-radius:12px">
+    <p style="text-align:center; color:gold; margin:10px 0" id="actionSkinPrice"></p>
+    <div class="action-buttons">
+        <button class="sell-btn" id="sellSkinBtn">💰 ПРОДАТЬ</button>
+        <button class="factory-btn" id="factorySkinBtn">🏭 НА ФАБРИКУ</button>
+    </div>
+    <button class="btn-main cancel-btn" style="margin-top:10px" onclick="closeSkinActions()">ОТМЕНА</button>
+</div>
+
+<!-- Модалка вывода -->
 <div id="withdrawModal" class="withdraw-modal">
     <div class="close-modal" onclick="closeWithdraw()">✖</div>
-    <h3 style="text-align:center">💸 Вывод NC</h3>
+    <h3 style="text-align:center">💸 ВЫВОД NC</h3>
     <input type="number" id="withdrawAmount" placeholder="Сумма (мин 50,000)">
     <select id="withdrawMethod">
         <option value="steam">Steam Trade</option>
-        <option value="crypto">Криптовалюта (soon)</option>
     </select>
-    <button class="btn-main" onclick="requestWithdraw()">Запросить вывод</button>
+    <button class="btn-main" onclick="requestWithdraw()">ЗАПРОСИТЬ ВЫВОД</button>
 </div>
 
 <!-- Страницы -->
@@ -93,44 +131,39 @@
     <div class="case-card" onclick="openCase('bomj')">
         <h3>🚽 Бомж-Кейс</h3>
         <div style="color:gold">1,000 NC</div>
-        <div style="font-size:10px; color:#888">99% пусто, тролль кейс</div>
     </div>
     <div class="case-card" onclick="openCase('normal')">
         <h3>📦 Обычный Кейс</h3>
         <div style="color:gold">25,000 NC</div>
-        <div style="font-size:10px; color:#888">50% пусто, скины до 30k</div>
     </div>
     <div class="case-card" onclick="openCase('advanced')">
         <h3>⚡ Продвинутый Кейс</h3>
         <div style="color:gold">100,000 NC</div>
-        <div style="font-size:10px; color:#888">50% пусто, крутые скины до 90k</div>
     </div>
     <div class="case-card" onclick="openCase('premium')">
         <h3>💎 Премиум Кейс</h3>
         <div style="color:gold">500,000 NC</div>
-        <div style="font-size:10px; color:#888">50% пусто, элитные ножи</div>
     </div>
     <div class="case-card" onclick="openCase('millionaire')">
         <h3>👑 Кейс Миллионера</h3>
         <div style="color:gold">2,500,000 NC</div>
-        <div style="font-size:10px; color:#888">🔥 Только ножи! Без пустышек</div>
     </div>
 </div>
 
 <div id="page-profile" class="page">
     <div class="profile-section">
-        <div id="userTitle" style="font-weight: bold;">👤 Загрузка...</div>
-        <div id="userIdDisplay" style="font-size:12px; color:gray">ID: ---</div>
+        <div id="userTitle" style="font-weight: bold; font-size: 16px;">👤 Загрузка...</div>
+        <div id="userIdDisplay" style="font-size:11px; color:gray">ID: ---</div>
         <div>💰 Реферальный доход: <span id="refEarned">0</span> NC</div>
     </div>
 
     <div class="profile-section">
-        <button class="btn-main" style="background:#4caf50" onclick="claimDaily()">🎁 ЕЖЕДНЕВНЫЙ БОНУС (+1000 NC)</button>
+        <button class="btn-main btn-success" onclick="claimDaily()">🎁 ЕЖЕДНЕВНЫЙ БОНУС (+1000 NC)</button>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin:10px 0">
             <button class="star-btn" onclick="doTask('sub_tg', 'https://t.me/TheCaseCs2')">📢 Канал (+25k)</button>
             <button class="star-btn" onclick="doTask('join_chat', 'https://t.me/+3Vp6w6MqO8FkNjEy')">💬 Чат (+10k)</button>
         </div>
-        <button class="btn-main" style="background: linear-gradient(to right, #8847ff, #d32ee6);" onclick="doTask('boost_tg', 'https://t.me/boost/TheCaseCs2')">⭐ ПРОГОЛОСОВАТЬ (+500k NC)</button>
+        <button class="btn-main btn-purple" onclick="doTask('boost_tg', 'https://t.me/boost/TheCaseCs2')">⭐ ПРОГОЛОСОВАТЬ (+500k NC)</button>
     </div>
 
     <div class="profile-section">
@@ -152,9 +185,7 @@
         <label>🤝 Реферальная ссылка</label>
         <input type="text" id="refLink" readonly onclick="this.select()">
         <button class="btn-main" style="background:#8847ff" onclick="copyRefLink()">📋 Копировать</button>
-        <div style="font-size:11px; color:#888; margin-top:8px;">
-            🎁 5 уровней: +1000 → +500 → +250 → +100 → +50 NC
-        </div>
+        <div style="font-size:10px; color:#888; margin-top:8px;">🎁 5 уровней: +1000 → +500 → +250 → +100 → +50 NC</div>
     </div>
 
     <div class="profile-section">
@@ -164,12 +195,12 @@
     </div>
 
     <div class="profile-section">
-        <button class="btn-main" style="background:#eb4b4b" onclick="openWithdraw()">💸 ВЫВОД NC (мин 50k)</button>
+        <button class="btn-main btn-danger" onclick="openWithdraw()">💸 ВЫВОД NC (мин 50k)</button>
     </div>
 </div>
 
 <div id="page-shop" class="page">
-    <div style="text-align:center; margin-bottom:20px; background:#1a1a1a; padding:15px; border-radius:12px;">
+    <div style="text-align:center; margin-bottom:20px; background:#1a1a1a; padding:20px; border-radius:16px;">
         <h3>⭐ 1 Star = 1,000 NC</h3>
         <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin:15px 0;">
             <button class="star-btn" onclick="setStars(10)">⭐ 10</button>
@@ -177,15 +208,15 @@
             <button class="star-btn" onclick="setStars(100)">⭐ 100</button>
             <button class="star-btn" onclick="setStars(500)">⭐ 500</button>
         </div>
-        <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:100px; text-align:center;"> ⭐ = <span id="ncOut" style="color:gold; font-weight:bold">10,000</span> NC
-        <button class="btn-main" onclick="topUp()" style="margin-top:15px;">💎 ПОПОЛНИТЬ ЧЕРЕЗ STARS</button>
+        <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:120px; text-align:center;"> ⭐ = <span id="ncOut" style="color:gold; font-weight:bold">10,000</span> NC
+        <button class="btn-main" onclick="topUp()" style="margin-top:15px;">💎 ПОПОЛНИТЬ</button>
     </div>
 </div>
 
 <nav class="nav">
-    <div id="nav-cases" class="nav-item active" onclick="nav('cases')">🎲<br>Кейсы</div>
-    <div id="nav-profile" class="nav-item" onclick="nav('profile')">👤<br>Профиль</div>
-    <div id="nav-shop" class="nav-item" onclick="nav('shop')">💰<br>Магазин</div>
+    <div id="nav-cases" class="nav-item active" onclick="nav('cases')"><span>🎲</span>Кейсы</div>
+    <div id="nav-profile" class="nav-item" onclick="nav('profile')"><span>👤</span>Профиль</div>
+    <div id="nav-shop" class="nav-item" onclick="nav('shop')"><span>💰</span>Магазин</div>
 </nav>
 
 <script>
@@ -195,35 +226,24 @@
     let balance = 0;
     let currentUser = null;
     let currentFactorySkinId = null;
+    let currentActionSkin = null;
 
-    // ========== ВСЕ СКИНЫ С ТВОИМИ КАРТИНКАМИ ==========
+    // ========== СКИНЫ ==========
     const skins = {
         empty: { name: "❌ Ничего", color: "gray", img: "", price: 0 },
-
-        // === ОБЫЧНЫЙ КЕЙС (25,000 NC) ===
+        // Обычные скины
         skin_ak: { name: "AK-47 | Redline", color: "blue", img: "ak.png", price: 25000 },
         skin_awp: { name: "AWP | Dragon Lore", color: "blue", img: "awp.png", price: 30000 },
         skin_m4a4: { name: "M4A4 | Howl", color: "blue", img: "m4a4.png", price: 22000 },
         skin_usp: { name: "USP-S | Kill Confirmed", color: "blue", img: "usp.png", price: 18000 },
         skin_glock: { name: "Glock-18 | Fade", color: "blue", img: "glock.png", price: 15000 },
         skin_deagle: { name: "Desert Eagle | Blaze", color: "blue", img: "deagle.png", price: 20000 },
-
-        // === ПРОДВИНУТЫЙ КЕЙС (100,000 NC) ===
-        skin_aug: { name: "AUG | Akihabara Accept", color: "purple", img: "aug.png", price: 80000 },
-        skin_famas: { name: "FAMAS | Djinn", color: "purple", img: "famas.png", price: 60000 },
-        skin_galil: { name: "Galil AR | Cerberus", color: "purple", img: "galil.png", price: 70000 },
-        skin_m4a4s: { name: "M4A1-S | Printstream", color: "purple", img: "m4a4s.png", price: 90000 },
-        skin_sg: { name: "SG 553 | Integrale", color: "purple", img: "sg.png", price: 75000 },
-        skin_ssg: { name: "SSG 08 | Blood in the Water", color: "purple", img: "ssg.png", price: 55000 },
-
-        // === ПРЕМИУМ КЕЙС (500,000 NC) ===
-        knife1: { name: "🔪 Karambit | Doppler", color: "red", img: "1knife.png", price: 2500000 },
-        knife2: { name: "🔪 M9 Bayonet | Fade", color: "red", img: "2knife.png", price: 2800000 },
-        knife3: { name: "🔪 Butterfly | Tiger Tooth", color: "red", img: "3knife.png", price: 3200000 },
-        knife4: { name: "🔪 Bayonet | Marble Fade", color: "gold", img: "4knife.png", price: 3000000 },
-        knife5: { name: "🔪 Huntsman | Slaughter", color: "gold", img: "5knife.png", price: 2200000 },
-
-        // === Доп оружие для разнообразия ===
+        skin_aug: { name: "AUG | Akihabara", color: "blue", img: "aug.png", price: 25000 },
+        skin_famas: { name: "FAMAS | Djinn", color: "blue", img: "famas.png", price: 20000 },
+        skin_galil: { name: "Galil AR | Cerberus", color: "blue", img: "galil.png", price: 22000 },
+        skin_m4a4s: { name: "M4A1-S | Printstream", color: "blue", img: "m4a4s.png", price: 28000 },
+        skin_sg: { name: "SG 553 | Integrale", color: "blue", img: "sg.png", price: 20000 },
+        skin_ssg: { name: "SSG 08 | Blood", color: "blue", img: "ssg.png", price: 18000 },
         skin_m249: { name: "M249 | Spectre", color: "blue", img: "m249.png", price: 5000 },
         skin_mac10: { name: "MAC-10 | Whitefish", color: "blue", img: "mac10.png", price: 4000 },
         skin_mag7: { name: "MAG-7 | Heat", color: "blue", img: "mag7.png", price: 3000 },
@@ -233,52 +253,29 @@
         skin_negev: { name: "Negev | Lionfish", color: "blue", img: "negev.png", price: 3500 },
         skin_nova: { name: "Nova | Hyper Beast", color: "blue", img: "nova.png", price: 4000 },
         skin_p2000: { name: "P2000 | Oceanic", color: "blue", img: "p2000.png", price: 3000 },
-        skin_sawed: { name: "Sawed-Off | The Kraken", color: "blue", img: "sawed.png", price: 3500 }
+        skin_sawed: { name: "Sawed-Off | Kraken", color: "blue", img: "sawed.png", price: 3500 },
+        // Ножи для премиум и миллионера
+        knife1: { name: "🔪 Karambit | Doppler", color: "red", img: "1knife.png", price: 2500000 },
+        knife2: { name: "🔪 M9 Bayonet | Fade", color: "red", img: "2knife.png", price: 2800000 },
+        knife3: { name: "🔪 Butterfly | Tiger Tooth", color: "red", img: "3knife.png", price: 3200000 },
+        knife4: { name: "🔪 Bayonet | Marble Fade", color: "gold", img: "4knife.png", price: 3000000 },
+        knife5: { name: "🔪 Huntsman | Slaughter", color: "gold", img: "5knife.png", price: 2200000 }
     };
 
     // Конфиг кейсов
     const caseConfig = {
-        bomj: { 
-            title: "🚽 Бомж-Кейс", 
-            price: 1000, 
-            drop: [skins.skin_ak, skins.skin_awp], 
-            emptyChance: 99 
-        },
-        normal: { 
-            title: "📦 Обычный Кейс", 
-            price: 25000, 
-            drop: [skins.skin_ak, skins.skin_awp, skins.skin_m4a4, skins.skin_usp, skins.skin_glock, skins.skin_deagle, skins.skin_m249, skins.skin_mac10, skins.skin_mag7, skins.skin_mp5, skins.skin_mp7, skins.skin_mp9, skins.skin_negev, skins.skin_nova, skins.skin_p2000, skins.skin_sawed], 
-            emptyChance: 50 
-        },
-        advanced: { 
-            title: "⚡ Продвинутый Кейс", 
-            price: 100000, 
-            drop: [skins.skin_aug, skins.skin_famas, skins.skin_galil, skins.skin_m4a4s, skins.skin_sg, skins.skin_ssg, skins.knife5], 
-            emptyChance: 50 
-        },
-        premium: { 
-            title: "💎 Премиум Кейс", 
-            price: 500000, 
-            drop: [skins.knife1, skins.knife2, skins.knife3, skins.knife4, skins.knife5], 
-            emptyChance: 50 
-        },
-        millionaire: { 
-            title: "👑 Кейс Миллионера", 
-            price: 2500000, 
-            drop: [skins.knife1, skins.knife2, skins.knife3, skins.knife4, skins.knife5], 
-            emptyChance: 0 
-        }
+        bomj: { title: "🚽 Бомж-Кейс", price: 1000, drop: [skins.skin_ak, skins.skin_awp], emptyChance: 99 },
+        normal: { title: "📦 Обычный Кейс", price: 25000, drop: [skins.skin_ak, skins.skin_awp, skins.skin_m4a4, skins.skin_usp, skins.skin_glock, skins.skin_deagle, skins.skin_m249, skins.skin_mac10, skins.skin_mag7, skins.skin_mp5, skins.skin_mp7, skins.skin_mp9, skins.skin_negev, skins.skin_nova, skins.skin_p2000, skins.skin_sawed], emptyChance: 50 },
+        advanced: { title: "⚡ Продвинутый Кейс", price: 100000, drop: [skins.skin_aug, skins.skin_famas, skins.skin_galil, skins.skin_m4a4s, skins.skin_sg, skins.skin_ssg, skins.knife5], emptyChance: 50 },
+        premium: { title: "💎 Премиум Кейс", price: 500000, drop: [skins.knife1, skins.knife2, skins.skin_ak, skins.skin_awp, skins.skin_m4a4s, skins.skin_aug], emptyChance: 50 },
+        millionaire: { title: "👑 Кейс Миллионера", price: 2500000, drop: [skins.knife1, skins.knife2, skins.knife3, skins.knife4, skins.knife5], emptyChance: 0 }
     };
 
-    // Взвешенный выбор скина
     function getRandomSkinFromCase(caseType) {
         const cfg = caseConfig[caseType];
         if (!cfg) return skins.empty;
-
-        if (Math.random() * 100 < cfg.emptyChance) {
-            return skins.empty;
-        }
-
+        if (Math.random() * 100 < cfg.emptyChance) return skins.empty;
+        
         const items = cfg.drop;
         const totalWeight = items.reduce((sum, s) => sum + (10000000 / (s.price + 1)), 0);
         let rand = Math.random() * totalWeight;
@@ -292,7 +289,7 @@
 
     // ========== API ==========
     async function syncWithServer() {
-        if (!tg.initDataUnsafe.user) return;
+        if (!tg.initDataUnsafe?.user) return;
         try {
             const res = await fetch(`${SERVER_URL}/sync-user`, {
                 method: 'POST',
@@ -323,7 +320,7 @@
     // ========== ЗАДАНИЯ ==========
     async function doTask(taskId, link) {
         tg.openTelegramLink(link);
-        tg.showConfirm("Вы перешли по ссылке? Нажмите ОК для проверки.", async (ok) => {
+        tg.showConfirm("Вы перешли по ссылке? Нажмите ОК.", async (ok) => {
             if (ok) {
                 try {
                     const res = await fetch(`${SERVER_URL}/check-task`, {
@@ -336,10 +333,8 @@
                         tg.showAlert("✅ Задание выполнено!");
                         balance = data.newBalance;
                         updateUI();
-                    } else {
-                        tg.showAlert("❌ " + (data.error || "Ошибка"));
-                    }
-                } catch (e) { tg.showAlert("Ошибка сервера"); }
+                    } else tg.showAlert("❌ " + (data.error || "Ошибка"));
+                } catch (e) { tg.showAlert("Ошибка"); }
             }
         });
     }
@@ -353,12 +348,10 @@
             });
             const data = await res.json();
             if (data.ok) {
-                tg.showAlert("🎁 +1000 NC получено!");
+                tg.showAlert("🎁 +1000 NC!");
                 balance = data.newBalance;
                 updateUI();
-            } else {
-                tg.showAlert("⏰ " + (data.error || "Уже получено сегодня"));
-            }
+            } else tg.showAlert("⏰ " + (data.error || "Уже получено"));
         } catch (e) { tg.showAlert("Ошибка"); }
     }
 
@@ -369,8 +362,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, tradeLink: link })
         });
-        const data = await res.json();
-        if (data.ok) tg.showAlert("✅ Трейд-ссылка сохранена!");
+        if (res.ok) tg.showAlert("✅ Сохранено!");
     }
 
     async function applyPromo() {
@@ -382,29 +374,44 @@
         });
         const data = await res.json();
         if (data.ok) {
-            tg.showAlert(`✅ Промокод активирован! +${data.newBalance - balance} NC`);
+            tg.showAlert(`✅ +${data.newBalance - balance} NC`);
             balance = data.newBalance;
             updateUI();
-        } else {
-            tg.showAlert("❌ Неверный или уже использован");
-        }
+        } else tg.showAlert("❌ Неверный промокод");
+    }
+
+    // ========== ПРОДАЖА СКИНА ==========
+    async function sellSkin(skinId, skinPrice) {
+        const res = await fetch(`${SERVER_URL}/remove-skin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, skinId: skinId })
+        });
+        if (res.ok) {
+            balance += skinPrice;
+            updateUI();
+            await updateBalanceOnServer(balance);
+            tg.showAlert(`💰 Вы продали скин за ${skinPrice.toLocaleString()} NC!`);
+            syncWithServer();
+            closeSkinActions();
+        } else tg.showAlert("❌ Ошибка продажи");
     }
 
     // ========== КЕЙСЫ ==========
     function openCase(type) {
-        let c = caseConfig[type];
+        const c = caseConfig[type];
         if (!c) return;
         document.getElementById('modalTitle').innerText = c.title;
-        document.getElementById('modalPrice').innerText = "Цена: " + c.price.toLocaleString() + " NC";
+        document.getElementById('modalPrice').innerHTML = "💰 Цена: " + c.price.toLocaleString() + " NC";
         document.getElementById('modalSpinBtn').onclick = () => startSpin(c.price, type);
-
+        
         const grid = document.getElementById('poolGrid');
         grid.innerHTML = '';
         const displayItems = [skins.empty, ...c.drop.slice(0, 5)];
         displayItems.forEach(s => {
-            grid.innerHTML += `<div class="pool-item" style="border-color: var(--${s.color})"><img src="${s.img}" onerror="this.src=''"><br>${s.name}</div>`;
+            grid.innerHTML += `<div class="pool-item"><img src="${s.img}" onerror="this.src=''"><br>${s.name}</div>`;
         });
-
+        
         document.getElementById('caseModal').style.display = 'block';
         const line = document.getElementById('line');
         line.style.transition = 'none';
@@ -412,7 +419,7 @@
         line.innerHTML = '';
         for (let i = 0; i < 15; i++) {
             let s = getRandomSkinFromCase(type);
-            line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src=''"></div>`;
+            line.innerHTML += `<div class="item"><img src="${s.img}" onerror="this.src=''"></div>`;
         }
     }
 
@@ -420,27 +427,27 @@
         if (balance < price) return tg.showAlert("❌ Мало NC!");
         const btn = document.getElementById('modalSpinBtn');
         btn.disabled = true;
-
+        
         balance -= price;
         updateUI();
         await updateBalanceOnServer(balance);
-
+        
         const line = document.getElementById('line');
         const winSkin = getRandomSkinFromCase(type);
         const winIndex = 25;
-
+        
         line.innerHTML = '';
         for (let i = 0; i < 50; i++) {
             let s = (i === winIndex) ? winSkin : getRandomSkinFromCase(type);
-            line.innerHTML += `<div class="item ${s.color}"><img src="${s.img}" onerror="this.src=''"></div>`;
+            line.innerHTML += `<div class="item"><img src="${s.img}" onerror="this.src=''"></div>`;
         }
-
+        
         setTimeout(() => {
             line.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
             const offset = (winIndex * 110) + 55 - (window.innerWidth / 2);
             line.style.transform = `translateX(-${offset}px)`;
         }, 50);
-
+        
         setTimeout(async () => {
             if (winSkin.name !== "❌ Ничего") {
                 await fetch(`${SERVER_URL}/add-skin`, {
@@ -448,22 +455,18 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, skin: winSkin })
                 });
-                tg.showAlert(`🎉 ВЫ ВЫИГРАЛИ: ${winSkin.name} стоимостью ${winSkin.price.toLocaleString()} NC!`);
+                tg.showAlert(`🎉 ВЫ ВЫИГРАЛИ: ${winSkin.name} (${winSkin.price.toLocaleString()} NC)!`);
                 syncWithServer();
-            } else {
-                tg.showAlert("😭 Увы, вам ничего не выпало!");
-            }
+            } else tg.showAlert("😭 Ничего не выпало!");
             btn.disabled = false;
             closeCase();
         }, 5500);
     }
 
-    function closeCase() {
-        document.getElementById('caseModal').style.display = 'none';
-    }
+    function closeCase() { document.getElementById('caseModal').style.display = 'none'; }
 
     // ========== ФАБРИКА ==========
-    async function startFactory(skinId, skinName, skinImg) {
+    async function startFactory(skinId) {
         const res = await fetch(`${SERVER_URL}/factory-start`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -471,11 +474,10 @@
         });
         const data = await res.json();
         if (data.ok) {
-            tg.showAlert(`🏭 Фабрика запущена! Доход: ${data.incomeRate} NC/час`);
-            renderInventory();
-        } else {
-            tg.showAlert("❌ " + data.error);
-        }
+            tg.showAlert(`🏭 Фабрика запущена! +${data.incomeRate} NC/час`);
+            syncWithServer();
+        } else tg.showAlert("❌ " + data.error);
+        closeSkinActions();
     }
 
     async function collectFactoryIncome() {
@@ -487,14 +489,12 @@
         });
         const data = await res.json();
         if (data.ok) {
-            tg.showAlert(`💰 Собрано ${data.earned} NC!${data.broken ? " Скин сломался :(" : ""}`);
+            tg.showAlert(`💰 Собрано ${data.earned} NC!${data.broken ? " Скин сломался" : ""}`);
             if (data.newBalance) balance = data.newBalance;
             updateUI();
-            renderInventory();
+            syncWithServer();
             if (data.broken) closeFactory();
-        } else {
-            tg.showAlert("❌ " + data.error);
-        }
+        } else tg.showAlert("❌ " + data.error);
     }
 
     async function boostFactory() {
@@ -506,88 +506,82 @@
         });
         const data = await res.json();
         if (data.success) {
-            tg.showAlert(`🚀 УСПЕХ! Доход увеличен до ${data.newRate} NC/час (уровень ${data.level})`);
-            renderInventory();
+            tg.showAlert(`🚀 УСПЕХ! Доход x2 (уровень ${data.level})`);
+            syncWithServer();
             closeFactory();
         } else if (data.broken) {
-            tg.showAlert("💥 РАЗГОН НЕ УДАЛСЯ! Скин сломался и исчез...");
-            renderInventory();
+            tg.showAlert("💥 РАЗГОН НЕ УДАЛСЯ! Скин сломан");
+            syncWithServer();
             closeFactory();
-        } else {
-            tg.showAlert("❌ " + (data.error || "Ошибка"));
-        }
+        } else tg.showAlert("❌ " + data.error);
     }
 
     // ========== ИНВЕНТАРЬ ==========
     function renderInventory() {
-        if (!currentUser || !currentUser.inventory) return;
+        if (!currentUser?.inventory) return;
         const inventoryDiv = document.getElementById('inventoryTab');
         const factoryDiv = document.getElementById('factoryTab');
-
+        
         const activeFactory = currentUser.inventory.filter(s => s.factory?.active && !s.factory?.broken);
         const otherSkins = currentUser.inventory.filter(s => !s.factory?.active || s.factory?.broken);
-
+        
         inventoryDiv.innerHTML = otherSkins.map(skin => `
-            <div class="inventory-card ${skin.factory?.broken ? 'broken' : ''}" onclick="showSkinActions('${skin.id}', '${skin.name}', '${skin.img}', ${skin.price})">
-                <img src="${skin.img}" onerror="this.src=''"><br>
-                <b>${skin.name}</b><br>
-                <small>💰 ${skin.price.toLocaleString()} NC</small>
-                ${skin.factory?.broken ? '<div class="factory-badge" style="background:#eb4b4b">💔 Сломан</div>' : ''}
+            <div class="inventory-card" onclick="openSkinActions('${skin.id}', '${skin.name}', '${skin.img}', ${skin.price})">
+                <img src="${skin.img}" onerror="this.src=''">
+                <div class="skin-name">${skin.name}</div>
+                <div class="skin-price">💰 ${skin.price.toLocaleString()}</div>
+                ${skin.factory?.broken ? '<div class="factory-badge broken-badge">💔 Сломан</div>' : ''}
             </div>
         `).join('') || "<div style='text-align:center; color:gray'>Нет предметов</div>";
-
+        
         factoryDiv.innerHTML = activeFactory.map(skin => `
             <div class="inventory-card" onclick="openFactoryModal('${skin.id}', '${skin.name}', '${skin.img}', ${skin.factory.incomeRate}, ${skin.factory.boostLevel})">
-                <img src="${skin.img}" onerror="this.src=''"><br>
-                <b>${skin.name}</b><br>
-                <small>⚡ ${skin.factory.incomeRate} NC/час</small>
+                <img src="${skin.img}" onerror="this.src=''">
+                <div class="skin-name">${skin.name}</div>
+                <div class="skin-price">⚡ ${skin.factory.incomeRate} NC/час</div>
                 <div class="factory-badge">🏭 Уровень ${skin.factory.boostLevel}</div>
             </div>
         `).join('') || "<div style='text-align:center; color:gray'>Нет активных фабрик</div>";
     }
-
-    function showSkinActions(skinId, name, img, price) {
-        tg.showPopup({
-            title: name,
-            message: `💰 Стоимость: ${price.toLocaleString()} NC\n\nЗапустить фабрику? (скин будет приносить доход 72 часа)`,
-            buttons: [
-                { id: "factory", type: "default", text: "🏭 Запустить фабрику" },
-                { id: "cancel", type: "cancel", text: "Отмена" }
-            ]
-        }, (btnId) => {
-            if (btnId === "factory") startFactory(skinId, name, img);
-        });
+    
+    function openSkinActions(skinId, name, img, price) {
+        currentActionSkin = { id: skinId, name, img, price };
+        document.getElementById('actionSkinName').innerText = name;
+        document.getElementById('actionSkinImg').src = img;
+        document.getElementById('actionSkinPrice').innerHTML = `💰 Стоимость: ${price.toLocaleString()} NC`;
+        document.getElementById('sellSkinBtn').onclick = () => sellSkin(skinId, price);
+        document.getElementById('factorySkinBtn').onclick = () => startFactory(skinId);
+        document.getElementById('skinActionsModal').style.display = 'block';
     }
-
+    
+    function closeSkinActions() {
+        document.getElementById('skinActionsModal').style.display = 'none';
+        currentActionSkin = null;
+    }
+    
     function openFactoryModal(skinId, name, img, rate, level) {
         currentFactorySkinId = skinId;
         document.getElementById('factorySkinName').innerText = name;
         document.getElementById('factorySkinImg').src = img;
-        document.getElementById('factoryInfo').innerHTML = `⚡ Доход: ${rate} NC/час<br>📈 Уровень разгона: ${level}<br>⚠️ Сломается через ~72 часа<br>💰 Собирать доход можно в любой момент!`;
+        document.getElementById('factoryInfo').innerHTML = `⚡ Доход: ${rate} NC/час<br>📈 Уровень: ${level}<br>⚠️ Сломается через ~72 часа`;
+        document.getElementById('collectBtn').onclick = () => collectFactoryIncome();
+        document.getElementById('boostBtn').onclick = () => boostFactory();
         document.getElementById('factoryModal').style.display = 'block';
     }
-
+    
     function closeFactory() {
         document.getElementById('factoryModal').style.display = 'none';
         currentFactorySkinId = null;
     }
 
     // ========== ВЫВОД ==========
-    function openWithdraw() {
-        document.getElementById('withdrawModal').style.display = 'block';
-    }
-
-    function closeWithdraw() {
-        document.getElementById('withdrawModal').style.display = 'none';
-    }
-
+    function openWithdraw() { document.getElementById('withdrawModal').style.display = 'block'; }
+    function closeWithdraw() { document.getElementById('withdrawModal').style.display = 'none'; }
+    
     async function requestWithdraw() {
         const amount = document.getElementById('withdrawAmount').value;
         const method = document.getElementById('withdrawMethod').value;
-        if (!amount || amount < 50000) {
-            tg.showAlert("❌ Минимальная сумма вывода: 50,000 NC");
-            return;
-        }
+        if (!amount || amount < 50000) return tg.showAlert("❌ Мин. сумма: 50,000 NC");
         const res = await fetch(`${SERVER_URL}/withdraw`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -595,13 +589,11 @@
         });
         const data = await res.json();
         if (data.ok) {
-            tg.showAlert(`✅ Заявка на вывод ${amount} NC отправлена! Администратор рассмотрит её.`);
+            tg.showAlert(`✅ Заявка на вывод ${amount} NC отправлена!`);
             balance = data.newBalance;
             updateUI();
             closeWithdraw();
-        } else {
-            tg.showAlert("❌ " + data.error);
-        }
+        } else tg.showAlert("❌ " + data.error);
     }
 
     // ========== ПРОЧЕЕ ==========
@@ -621,7 +613,7 @@
             btns[1].classList.add('active');
         }
     }
-
+    
     async function topUp() {
         const stars = document.getElementById('starsIn').value;
         const res = await fetch(`${SERVER_URL}/create-stars-invoice`, {
@@ -632,26 +624,24 @@
         const data = await res.json();
         if (data.link) tg.openInvoice(data.link, (s) => { if (s === 'paid') syncWithServer(); });
     }
-
+    
     function setStars(v) { document.getElementById('starsIn').value = v; calcNC(); }
     function calcNC() { document.getElementById('ncOut').innerText = (document.getElementById('starsIn').value * 1000).toLocaleString(); }
-    
     function nav(p) {
         document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
         document.getElementById('page-' + p).classList.add('active');
         document.getElementById('nav-' + p).classList.add('active');
     }
-    
     function copyRefLink() {
         const link = document.getElementById('refLink');
         link.select();
         document.execCommand('copy');
         tg.showAlert("🔗 Ссылка скопирована!");
     }
-
+    
     // ========== ЗАПУСК ==========
-    if (tg.initDataUnsafe.user) {
+    if (tg.initDataUnsafe?.user) {
         const u = tg.initDataUnsafe.user;
         document.getElementById('userTitle').innerHTML = "👤 " + (u.username || u.first_name);
         document.getElementById('userIdDisplay').innerHTML = "ID: " + u.id;
