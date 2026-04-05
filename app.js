@@ -4,32 +4,25 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 
-// --- НАСТРОЙКИ ---
 const bot = new Telegraf('8297728079:AAHb8-Sys7zF9ma68vLsa4Vzw2lOWerp8NM');
 const app = express();
-const ADMIN_ID = 8019223768; 
+const ADMIN_ID = 8019223768;
 const DB_FILE = 'database.json';
 
 app.use(cors());
 app.use(bodyParser.json());
-
-// Фикс кодировки
 app.use((req, res, next) => {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     next();
 });
 
-// --- БАЗА ДАННЫХ ---
 let users = {};
 const loadDB = () => {
     if (fs.existsSync(DB_FILE)) {
         try {
             users = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
             console.log(`[DB] Loaded: ${Object.keys(users).length} users`);
-        } catch (e) { 
-            console.error("[DB] Load Error:", e);
-            users = {}; 
-        }
+        } catch (e) { users = {}; }
     }
 };
 loadDB();
@@ -37,30 +30,31 @@ loadDB();
 const saveDB = () => {
     try {
         fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2), 'utf8');
-    } catch (e) {
-        console.error("[DB] Save Error:", e);
-    }
+    } catch (e) { console.error(e); }
 };
 
-// Хелпер для инициализации юзера (если запросы пришли раньше /sync-user)
 const initUser = (id, username = 'unknown') => {
     if (!users[id]) {
-        users[id] = { 
-            username: username, 
-            balance: 10000, 
-            usedPromos: [], 
-            completedTasks: [], 
-            lastBonus: null, 
+        users[id] = {
+            username: username,
+            balance: 10000,
+            usedPromos: [],
+            completedTasks: [],
+            lastBonus: null,
             tradeLink: "",
             invitedBy: null,
-            inventory: []
+            inventory: [],
+            referrals: [],
+            totalEarnedFromReferrals: 0
         };
         saveDB();
     }
     return users[id];
 };
 
-// --- API ДЛЯ MINI APP ---
+const REF_REWARDS = [1000, 500, 250, 100, 50];
+
+// --- API ---
 
 app.post('/sync-user', (req, res) => {
     const userId = req.body.userId?.toString();
@@ -93,11 +87,27 @@ app.post('/update-balance', (req, res) => {
     }
 });
 
+app.post('/add-skin', (req, res) => {
+    const { userId, skin } = req.body;
+    const id = userId?.toString();
+    const user = initUser(id);
+
+    const newSkin = {
+        id: Date.now() + Math.random(),
+        name: skin.name,
+        img: skin.img,
+        price: skin.price,
+        factory: { active: false, incomeRate: 0, boostLevel: 0, breakAt: null, lastCollect: null }
+    };
+    if (!user.inventory) user.inventory = [];
+    user.inventory.push(newSkin);
+    saveDB();
+    res.json({ ok: true });
+});
+
 app.post('/check-task', (req, res) => {
     const { userId, taskId } = req.body;
     const id = userId?.toString();
-    
-    // Если юзера нет в базе — создаем его на лету
     const user = initUser(id);
 
     if (!user.completedTasks) user.completedTasks = [];
@@ -106,15 +116,14 @@ app.post('/check-task', (req, res) => {
     }
 
     let reward = 0;
-    if (taskId === 'sub_tg') reward = 50000;
-    if (taskId === 'join_chat') reward = 25000;
+    if (taskId === 'sub_tg') reward = 25000;
+    if (taskId === 'join_chat') reward = 10000;
     if (taskId === 'boost_tg') reward = 500000;
 
     if (reward > 0) {
         user.balance += reward;
         user.completedTasks.push(taskId);
         saveDB();
-        console.log(`[Task] User ${id} finished ${taskId}. Reward: ${reward}`);
         return res.json({ ok: true, newBalance: user.balance });
     }
     res.status(400).json({ error: "Unknown task" });
@@ -123,13 +132,13 @@ app.post('/check-task', (req, res) => {
 app.post('/daily-bonus', (req, res) => {
     const id = req.body.userId?.toString();
     const user = initUser(id);
-    
+
     const now = Date.now();
     const lastBonus = user.lastBonus ? new Date(user.lastBonus).getTime() : 0;
     const DAY = 24 * 60 * 60 * 1000;
 
     if (now - lastBonus > DAY) {
-        user.balance += 500;
+        user.balance += 1000;
         user.lastBonus = new Date().toISOString();
         saveDB();
         return res.json({ ok: true, newBalance: user.balance });
@@ -159,21 +168,153 @@ app.post('/apply-promo', (req, res) => {
     res.status(400).json({ error: "Invalid promo" });
 });
 
-// --- STARS PAYMENTS ---
+app.post('/track-referral', (req, res) => {
+    const { referrerId, newUserId } = req.body;
+    const refId = referrerId?.toString();
+    const newId = newUserId?.toString();
+
+    if (!refId || !newId || refId === newId) return res.json({ ok: false });
+
+    const newUser = initUser(newId);
+    if (newUser.invitedBy) return res.json({ ok: false });
+
+    newUser.invitedBy = refId;
+    saveDB();
+
+    let current = refId;
+    let level = 0;
+
+    while (current && level < REF_REWARDS.length) {
+        const referrer = users[current];
+        if (referrer) {
+            const reward = REF_REWARDS[level];
+            referrer.balance += reward;
+            referrer.totalEarnedFromReferrals = (referrer.totalEarnedFromReferrals || 0) + reward;
+            if (!referrer.referrals) referrer.referrals = [];
+            if (!referrer.referrals.includes(newId)) referrer.referrals.push(newId);
+            saveDB();
+
+            bot.telegram.sendMessage(parseInt(current), `🎁 +${reward} NC за приглашение ${level + 1} уровня!`).catch(e => {});
+        }
+        current = referrer?.invitedBy;
+        level++;
+    }
+
+    res.json({ ok: true, reward: REF_REWARDS[0] });
+});
+
+app.post('/factory-start', (req, res) => {
+    const { userId, skinId } = req.body;
+    const user = users[userId?.toString()];
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const skin = user.inventory.find(s => s.id == skinId);
+    if (!skin) return res.status(404).json({ error: "Skin not found" });
+    if (skin.factory.active) return res.status(400).json({ error: "Already running" });
+
+    const baseIncome = Math.floor(skin.price / 200);
+    skin.factory.active = true;
+    skin.factory.incomeRate = baseIncome;
+    skin.factory.boostLevel = 0;
+    skin.factory.breakAt = Date.now() + 72 * 60 * 60 * 1000;
+    skin.factory.lastCollect = Date.now();
+    saveDB();
+
+    res.json({ ok: true, incomeRate: baseIncome });
+});
+
+app.post('/factory-collect', (req, res) => {
+    const { userId, skinId } = req.body;
+    const user = users[userId?.toString()];
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const skin = user.inventory.find(s => s.id == skinId);
+    if (!skin || !skin.factory.active) return res.status(400).json({ error: "Factory not active" });
+
+    const now = Date.now();
+    let earned = 0;
+    if (skin.factory.lastCollect) {
+        const hoursPassed = (now - skin.factory.lastCollect) / (1000 * 60 * 60);
+        earned = Math.floor(skin.factory.incomeRate * hoursPassed);
+    } else {
+        earned = skin.factory.incomeRate;
+    }
+
+    if (now >= skin.factory.breakAt) {
+        skin.factory.active = false;
+        skin.factory.broken = true;
+        earned += skin.factory.incomeRate;
+        saveDB();
+        return res.json({ ok: true, earned, broken: true });
+    }
+
+    skin.factory.lastCollect = now;
+    user.balance += earned;
+    saveDB();
+
+    res.json({ ok: true, earned, broken: false, newBalance: user.balance });
+});
+
+app.post('/factory-boost', (req, res) => {
+    const { userId, skinId } = req.body;
+    const user = users[userId?.toString()];
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const skin = user.inventory.find(s => s.id == skinId);
+    if (!skin || !skin.factory.active) return res.status(400).json({ error: "Factory not active" });
+
+    const boostLevel = skin.factory.boostLevel || 0;
+    const chances = [50, 25, 13, 5];
+    if (boostLevel >= chances.length) return res.status(400).json({ error: "Max boost reached" });
+
+    const success = Math.random() * 100 < chances[boostLevel];
+    if (success) {
+        skin.factory.incomeRate *= 2;
+        skin.factory.boostLevel++;
+        saveDB();
+        res.json({ ok: true, success: true, newRate: skin.factory.incomeRate, level: skin.factory.boostLevel });
+    } else {
+        skin.factory.active = false;
+        skin.factory.broken = true;
+        saveDB();
+        res.json({ ok: true, success: false, broken: true });
+    }
+});
+
+app.post('/withdraw', (req, res) => {
+    const { userId, amount, method } = req.body;
+    const user = users[userId?.toString()];
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const withdrawAmount = parseInt(amount);
+    if (withdrawAmount < 50000) return res.status(400).json({ error: "Minimum 50,000 NC" });
+    if (user.balance < withdrawAmount) return res.status(400).json({ error: "Insufficient balance" });
+
+    if (!user.tradeLink && method === 'steam') {
+        return res.status(400).json({ error: "Set trade link first" });
+    }
+
+    user.balance -= withdrawAmount;
+    saveDB();
+
+    bot.telegram.sendMessage(ADMIN_ID, `💰 WITHDRAW REQUEST\nUser: ${user.username} (${userId})\nAmount: ${withdrawAmount} NC\nMethod: ${method}\nTrade: ${user.tradeLink || 'N/A'}`);
+
+    res.json({ ok: true, newBalance: user.balance });
+});
+
 app.post('/create-stars-invoice', async (req, res) => {
     const { userId, stars } = req.body;
     try {
         const link = await bot.telegram.createInvoiceLink({
             title: "Пополнение NC",
-            description: `Обмен ${stars} Stars на монеты NC`,
+            description: `${stars} Stars → ${parseInt(stars) * 1000} NC`,
             payload: `stars_${userId}_${stars}`,
-            provider_token: "", 
+            provider_token: "",
             currency: "XTR",
             prices: [{ label: "Stars", amount: parseInt(stars) }]
         });
         res.json({ ok: true, link: link });
     } catch (e) {
-        console.error("Invoice Error:", e);
         res.status(500).json({ error: "Invoice error" });
     }
 });
@@ -181,53 +322,68 @@ app.post('/create-stars-invoice', async (req, res) => {
 bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
 bot.on('successful_payment', async (ctx) => {
     const payload = ctx.message.successful_payment.invoice_payload;
-    const [ , userId, stars] = payload.split('_');
+    const [_, userId, stars] = payload.split('_');
     const user = initUser(userId);
-    
-    const amountNC = parseInt(stars) * 7500; 
+    const amountNC = parseInt(stars) * 1000;
     user.balance += amountNC;
     saveDB();
     await ctx.reply(`✅ +${amountNC.toLocaleString()} NC зачислено!`);
 });
 
-// --- БОТ КОМАНДЫ ---
 bot.start(async (ctx) => {
     const userId = ctx.from.id.toString();
-    const startPayload = ctx.payload; 
-    
+    const startPayload = ctx.payload;
+
     const user = initUser(userId, ctx.from.username || ctx.from.first_name);
-    
+
     if (startPayload && startPayload !== userId && !user.invitedBy && users[startPayload]) {
-        user.invitedBy = startPayload;
-        users[startPayload].balance += 1000;
-        try { 
-            await bot.telegram.sendMessage(startPayload, `💰 +1,000 NC! По вашей ссылке зашел @${ctx.from.username || userId}`); 
-        } catch(e){}
+        fetch(`http://localhost:${PORT}/track-referral`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ referrerId: startPayload, newUserId: userId })
+        }).catch(e => console.error(e));
     }
     saveDB();
-    
+
     ctx.reply("Добро пожаловать в NotCase!", Markup.inlineKeyboard([
-        [Markup.button.webApp("ИГРАТЬ", "https://твоя-ссылка.com")]
+        [Markup.button.webApp("🎮 ИГРАТЬ", "https://твоя-ссылка.com")]
     ]));
 });
 
 bot.command('admin', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.reply(`Юзеров: ${Object.keys(users).length}\n/give [сумма]`);
+    ctx.reply(`👑 Админ панель\nЮзеров: ${Object.keys(users).length}\n\n/give [сумма] [userId?]\n/promo [code] [amount]`);
 });
 
 bot.command('give', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    const amount = parseInt(ctx.payload);
+    const parts = ctx.payload.split(' ');
+    const amount = parseInt(parts[0]);
+    const targetId = parts[1];
     if (isNaN(amount)) return ctx.reply("Пример: /give 5000");
-    Object.keys(users).forEach(id => { users[id].balance += amount; });
+
+    if (targetId && users[targetId]) {
+        users[targetId].balance += amount;
+        ctx.reply(`✅ Выдано ${amount} NC юзеру ${targetId}`);
+    } else {
+        Object.keys(users).forEach(id => { users[id].balance += amount; });
+        ctx.reply(`✅ Раздали ${amount} NC всем!`);
+    }
     saveDB();
-    ctx.reply(`Раздали ${amount} всем!`);
 });
 
-// --- ЗАПУСК ---
+bot.command('promo', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    const [code, amount] = ctx.payload.split(' ');
+    if (!code || !amount) return ctx.reply("/promo [code] [amount]");
+
+    if (!global.promoCodes) global.promoCodes = {};
+    global.promoCodes[code.toLowerCase()] = parseInt(amount);
+    ctx.reply(`✅ Промокод ${code} на ${amount} NC создан`);
+});
+
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, '0.0.0.0', () => { 
-    console.log(`Server started on port ${PORT}`); 
-    bot.launch(); 
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server started on port ${PORT}`);
+    bot.launch();
 });
