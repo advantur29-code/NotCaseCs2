@@ -75,6 +75,7 @@
         .upgrader-wheel { position: relative; width: 250px; height: 250px; margin: 20px auto; border-radius: 50%; overflow: hidden; border: 3px solid gold; }
         .upgrader-segment { position: absolute; width: 50%; height: 50%; transform-origin: 100% 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; text-align: center; }
         .upgrader-pointer { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 30px; z-index: 10; }
+        #selectedSkinInfo { text-align: center; margin: 10px 0; padding: 10px; background: #222; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -84,17 +85,15 @@
     <div class="balance" id="balanceDisplay">0 NC</div>
 </div>
 
-<!-- Анонс -->
 <div class="announcement" onclick="window.open('https://www.tiktok.com')">
     📢 За 50 тыс. просмотров в TikTok видео нашего бота с хештегом <b>#NotCaseCs2_bot</b> даётся <b>+15,000,000 монет</b>!
 </div>
 
-<!-- Модалка кейса -->
 <div id="caseModal" class="case-modal">
     <div class="close-modal" onclick="closeCase()">✖</div>
     <h2 id="modalTitle" style="text-align:center">Кейс</h2>
     <div class="roulette-wrapper">
-        <div class="pointer"></div>
+        <div class="pointer">▼</div>
         <div id="line" class="cases-line"></div>
     </div>
     <button class="btn-main" id="modalSpinBtn">🔓 ОТКРЫТЬ КЕЙС</button>
@@ -103,7 +102,6 @@
     <div id="poolGrid" class="pool-grid"></div>
 </div>
 
-<!-- Модалка фабрики -->
 <div id="factoryModal" class="factory-modal">
     <div class="close-modal" onclick="closeFactory()">✖</div>
     <h3 style="text-align:center" id="factorySkinName"></h3>
@@ -114,7 +112,6 @@
     <button class="btn-main" style="background:#444" onclick="closeFactory()">ЗАКРЫТЬ</button>
 </div>
 
-<!-- Модалка действий со скином -->
 <div id="skinActionsModal" class="skin-actions-modal">
     <div class="close-modal" onclick="closeSkinActions()">✖</div>
     <h3 style="text-align:center" id="actionSkinName"></h3>
@@ -128,19 +125,16 @@
     <button class="btn-main cancel-btn" style="margin-top:10px" onclick="closeSkinActions()">ОТМЕНА</button>
 </div>
 
-<!-- Модалка апгрейдера -->
 <div id="upgraderModal" class="upgrader-modal">
     <div class="close-modal" onclick="closeUpgrader()">✖</div>
     <h3 style="text-align:center">🎰 АПГРЕЙДЕР СКИНОВ</h3>
     <div class="upgrader-wheel" id="upgraderWheel"></div>
     <div class="upgrader-pointer">▼</div>
-    <button class="btn-main" id="spinUpgraderBtn" onclick="spinUpgrader()">🎲 КРУТИТЬ (1 скин)</button>
-    <p style="text-align:center; font-size:12px; color:#888; margin-top:10px">Выберите скин из инвентаря для апгрейда!</p>
-    <div id="selectedSkinInfo" style="text-align:center; margin:10px 0"></div>
+    <button class="btn-main" id="spinUpgraderBtn" onclick="spinUpgrader()">🎲 КРУТИТЬ</button>
+    <div id="selectedSkinInfo" style="text-align:center; margin:10px 0; padding:10px; background:#222; border-radius:10px">❌ Скин не выбран</div>
     <button class="btn-main cancel-btn" onclick="closeUpgrader()">ЗАКРЫТЬ</button>
 </div>
 
-<!-- Страницы -->
 <div id="page-cases" class="page active">
     <div class="case-card" onclick="openCase('bomj')">
         <h3>🚽 Бомж-Кейс</h3>
@@ -246,7 +240,6 @@
     let currentActionSkin = null;
     let selectedUpgraderSkin = null;
 
-    // ========== СКИНЫ ==========
     const skins = {
         empty: { name: "❌ Ничего", color: "gray", img: "not.png", price: 0 },
         skin_ak: { name: "AK-47 | Redline", color: "blue", img: "ak.png", price: 25000 },
@@ -278,7 +271,7 @@
         knife5: { name: "🔪 Huntsman | Slaughter", color: "gold", img: "5knife.png", price: 2200000 }
     };
 
-    const skinList = Object.values(skins).filter(s => s.name !== "❌ Ничего");
+    const skinList = Object.values(skins).filter(s => s.name !== "❌ Ничего" && s.img !== "");
 
     const caseConfig = {
         bomj: { title: "🚽 Бомж-Кейс", price: 2000, drop: [skins.skin_ak, skins.skin_awp], emptyChance: 99, forceEmpty: true },
@@ -291,9 +284,7 @@
     function getRandomSkinFromCase(caseType) {
         const cfg = caseConfig[caseType];
         if (!cfg) return skins.empty;
-        
         if (cfg.forceEmpty) return skins.empty;
-        
         if (Math.random() * 100 < cfg.emptyChance) return skins.empty;
         
         const items = cfg.drop;
@@ -307,7 +298,6 @@
         return items[0];
     }
 
-    // ========== API ==========
     async function syncWithServer() {
         if (!tg.initDataUnsafe?.user) return;
         try {
@@ -346,7 +336,6 @@
         document.getElementById('streakFill').innerHTML = `🔥 День ${streak} | ${reward} NC`;
     }
 
-    // ========== ЗАДАНИЯ С ПРОВЕРКОЙ ==========
     async function doTask(taskId, link) {
         tg.openTelegramLink(link);
         
@@ -436,7 +425,6 @@
         } else tg.showAlert("❌ Неверный промокод");
     }
 
-    // ========== ПРОДАЖА/ВЫВОД СКИНА ==========
     async function sellSkin(skinId, skinPrice) {
         const res = await fetch(`${SERVER_URL}/remove-skin`, {
             method: 'POST',
@@ -475,7 +463,6 @@
         }
     }
 
-    // ========== КЕЙСЫ ==========
     function openCase(type) {
         const c = caseConfig[type];
         if (!c) return;
@@ -543,7 +530,6 @@
 
     function closeCase() { document.getElementById('caseModal').style.display = 'none'; }
 
-    // ========== ФАБРИКА ==========
     async function startFactory(skinId) {
         const res = await fetch(`${SERVER_URL}/factory-start`, {
             method: 'POST',
@@ -598,21 +584,49 @@
         } else tg.showAlert("❌ " + data.error);
     }
 
-    // ========== АПГРЕЙДЕР ==========
     function openUpgrader() {
         if (!currentUser?.inventory || currentUser.inventory.length === 0) {
             tg.showAlert("❌ У вас нет скинов для апгрейда!");
             return;
         }
-        document.getElementById('upgraderModal').style.display = 'block';
-        renderUpgraderWheel();
-        selectedUpgraderSkin = null;
-        document.getElementById('selectedSkinInfo').innerHTML = "❌ Скин не выбран";
+        
+        const nonFactorySkins = currentUser.inventory.filter(s => !s.factory?.active);
+        
+        if (nonFactorySkins.length === 0) {
+            tg.showAlert("❌ Нет доступных скинов! (скины на фабрике нельзя апгрейдить)");
+            return;
+        }
+        
+        const buttons = nonFactorySkins.map(skin => ({
+            id: skin.id,
+            type: "default",
+            text: `${skin.name} (${skin.price.toLocaleString()} NC)`
+        }));
+        
+        buttons.push({ id: "cancel", type: "cancel", text: "❌ Отмена" });
+        
+        tg.showPopup({
+            title: "🎰 ВЫБЕРИТЕ СКИН",
+            message: "Какой скин хотите улучшить?",
+            buttons: buttons
+        }, (btnId) => {
+            if (btnId === "cancel") return;
+            
+            const selectedSkin = nonFactorySkins.find(s => s.id == btnId);
+            if (selectedSkin) {
+                selectedUpgraderSkin = selectedSkin;
+                document.getElementById('selectedSkinInfo').innerHTML = `✅ Выбран: ${selectedSkin.name} <img src="${selectedSkin.img}" style="width:30px; vertical-align:middle" onerror="this.src='not.png'">`;
+                document.getElementById('upgraderModal').style.display = 'block';
+                renderUpgraderWheel();
+            }
+        });
     }
 
     function renderUpgraderWheel() {
         const wheel = document.getElementById('upgraderWheel');
+        if (!wheel) return;
         wheel.innerHTML = '';
+        
         const segments = skinList.slice(0, 8);
         const angleStep = 360 / segments.length;
         
@@ -622,14 +636,9 @@
             segment.className = 'upgrader-segment';
             segment.style.transform = `rotate(${angle}deg) skewY(${90 - angleStep}deg)`;
             segment.style.background = `hsl(${i * 45}, 70%, 50%)`;
-            segment.innerHTML = `<div style="transform: skewY(${-(90 - angleStep)}deg) rotate(${angleStep/2}deg)"><img src="${skin.img}" style="width:30px"></div>`;
+            segment.innerHTML = `<div style="transform: skewY(${-(90 - angleStep)}deg) rotate(${angleStep/2}deg)"><img src="${skin.img}" style="width:30px" onerror="this.src='not.png'"></div>`;
             wheel.appendChild(segment);
         });
-    }
-
-    function selectUpgraderSkin(skinId, skinName, skinImg) {
-        selectedUpgraderSkin = { id: skinId, name: skinName, img: skinImg };
-        document.getElementById('selectedSkinInfo').innerHTML = `✅ Выбран: ${skinName} <img src="${skinImg}" style="width:30px; vertical-align:middle">`;
     }
 
     async function spinUpgrader() {
@@ -638,22 +647,19 @@
             return;
         }
         
-        // Находим скин в инвентаре
-        const hasSkin = currentUser.inventory.some(s => s.id == selectedUpgraderSkin.id);
-        if (!hasSkin) {
+        const stillHave = currentUser.inventory.some(s => s.id == selectedUpgraderSkin.id);
+        if (!stillHave) {
             tg.showAlert("❌ Этого скина больше нет в инвентаре!");
             closeUpgrader();
             return;
         }
         
-        // Удаляем выбранный скин
         await fetch(`${SERVER_URL}/remove-skin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, skinId: selectedUpgraderSkin.id })
         });
         
-        // Выбираем случайный скин из пула (шанс на лучший)
         const possibleSkins = skinList.filter(s => s.price > 0);
         const totalWeight = possibleSkins.reduce((sum, s) => sum + (s.price / 1000), 0);
         let rand = Math.random() * totalWeight;
@@ -667,15 +673,14 @@
             rand -= weight;
         }
         
-        // Добавляем новый скин
         await fetch(`${SERVER_URL}/add-skin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, skin: newSkin })
         });
         
-        tg.showAlert(`🎰 АПГРЕЙД! ${selectedUpgraderSkin.name} → ${newSkin.name} (${newSkin.price.toLocaleString()} NC)!`);
-        syncWithServer();
+        tg.showAlert(`🎰 АПГРЕЙД!\n${selectedUpgraderSkin.name} → ${newSkin.name}\n💰 ${newSkin.price.toLocaleString()} NC!`);
+        await syncWithServer();
         closeUpgrader();
     }
 
@@ -684,7 +689,6 @@
         selectedUpgraderSkin = null;
     }
 
-    // ========== ИНВЕНТАРЬ ==========
     function renderInventory() {
         if (!currentUser?.inventory) return;
         const inventoryDiv = document.getElementById('inventoryTab');
@@ -743,7 +747,6 @@
         currentFactorySkinId = null;
     }
 
-    // ========== ПРОЧЕЕ ==========
     function showInventoryTab(tab) {
         const invTab = document.getElementById('inventoryTab');
         const facTab = document.getElementById('factoryTab');
@@ -787,7 +790,6 @@
         tg.showAlert("🔗 Ссылка скопирована!");
     }
     
-    // ========== ЗАПУСК ==========
     if (tg.initDataUnsafe?.user) {
         const u = tg.initDataUnsafe.user;
         document.getElementById('userTitle').innerHTML = "👤 " + (u.username || u.first_name);
