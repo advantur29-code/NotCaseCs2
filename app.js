@@ -536,14 +536,18 @@ bot.command('broadcast', async (ctx) => {
     if (!message) return ctx.reply("Usage: /broadcast Hello everyone!");
     
     let sent = 0;
+    let failed = 0;
+    
     for (const id of Object.keys(users)) {
         try {
             await bot.telegram.sendMessage(parseInt(id), `📢 ANNOUNCEMENT:\n\n${message}`);
             sent++;
-        } catch(e) {}
+        } catch(e) {
+            failed++;
+        }
         await new Promise(r => setTimeout(r, 50));
     }
-    ctx.reply(`✅ Broadcast sent to ${sent} users`);
+    ctx.reply(`✅ Broadcast sent to ${sent} users\n❌ Failed: ${failed}`);
 });
 
 bot.command('stats', (ctx) => {
