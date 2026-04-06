@@ -16,23 +16,30 @@ app.use((req, res, next) => {
     next();
 });
 
+// ========== БАЗА ДАННЫХ ==========
 let users = {};
-let pendingWithdraws = {};
+let promoCodes = {};
 
 const loadDB = () => {
     if (fs.existsSync(DB_FILE)) {
         try {
-            users = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-            console.log(`[DB] Loaded: ${Object.keys(users).length} users`);
-        } catch (e) { users = {}; }
+            const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+            users = data.users || {};
+            promoCodes = data.promoCodes || {};
+            console.log(`[DB] Loaded: ${Object.keys(users).length} users, ${Object.keys(promoCodes).length} promos`);
+        } catch (e) { 
+            console.error("[DB] Load Error:", e);
+            users = {};
+            promoCodes = {};
+        }
     }
 };
 loadDB();
 
 const saveDB = () => {
     try {
-        fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2), 'utf8');
-    } catch (e) { console.error(e); }
+        fs.writeFileSync(DB_FILE, JSON.stringify({ users, promoCodes }, null, 2), 'utf8');
+    } catch (e) { console.error("[DB] Save Error:", e); }
 };
 
 const initUser = (id, username = 'unknown') => {
@@ -58,7 +65,7 @@ const initUser = (id, username = 'unknown') => {
 
 const REF_REWARDS = [1000, 500, 250, 100, 50];
 
-// --- API ---
+// ========== API ЭНДПОИНТЫ ==========
 
 app.post('/sync-user', (req, res) => {
     const userId = req.body.userId?.toString();
@@ -221,19 +228,22 @@ app.post('/apply-promo', (req, res) => {
 
     if (!user.usedPromos) user.usedPromos = [];
     const code = promo?.toLowerCase();
-    if (user.usedPromos.includes(code)) return res.status(400).json({ error: "Already used" });
-
-    let bonus = 0;
-    if (code === 'advantur') bonus = 1000000;
-    if (code === 'start') bonus = 50000;
-
-    if (bonus > 0) {
+    
+    if (user.usedPromos.includes(code)) {
+        return res.status(400).json({ error: "You already used this promo code" });
+    }
+    
+    if (promoCodes[code]) {
+        const bonus = promoCodes[code];
         user.balance += bonus;
         user.usedPromos.push(code);
+        
+        delete promoCodes[code];
         saveDB();
         return res.json({ ok: true, newBalance: user.balance });
     }
-    res.status(400).json({ error: "Invalid promo" });
+    
+    res.status(400).json({ error: "Invalid or expired promo code" });
 });
 
 app.post('/track-referral', (req, res) => {
@@ -271,7 +281,8 @@ app.post('/track-referral', (req, res) => {
     res.json({ ok: true, reward: REF_REWARDS[0] });
 });
 
-// --- ФАБРИКА (скин удаляется при поломке) ---
+// ========== ФАБРИКА ==========
+
 app.post('/factory-start', (req, res) => {
     const { userId, skinId } = req.body;
     const user = users[userId?.toString()];
@@ -313,7 +324,6 @@ app.post('/factory-collect', (req, res) => {
     }
 
     if (now >= skin.factory.breakAt) {
-        // Скин УДАЛЯЕТСЯ при поломке
         user.inventory.splice(skinIndex, 1);
         earned += skin.factory.incomeRate;
         saveDB();
@@ -349,14 +359,16 @@ app.post('/factory-boost', (req, res) => {
         saveDB();
         res.json({ ok: true, success: true, newRate: skin.factory.incomeRate, level: skin.factory.boostLevel });
     } else {
-        // При провале скин УДАЛЯЕТСЯ
         user.inventory.splice(skinIndex, 1);
         saveDB();
         res.json({ ok: true, success: false, broken: true, deleted: true });
     }
 });
 
-// --- ВЫВОД СКИНОВ (не монет) ---
+// ========== ВЫВОД СКИНОВ ==========
+
+let pendingWithdraws = {};
+
 app.post('/withdraw-skin', (req, res) => {
     const { userId, skinId } = req.body;
     const id = userId?.toString();
@@ -371,7 +383,6 @@ app.post('/withdraw-skin', (req, res) => {
     const skin = user.inventory[skinIndex];
     if (skin.factory?.active) return res.status(400).json({ error: "Cannot withdraw active factory skin" });
     
-    // Создаём заявку на вывод
     const requestId = Date.now() + Math.random();
     pendingWithdraws[requestId] = {
         userId: id,
@@ -381,7 +392,6 @@ app.post('/withdraw-skin', (req, res) => {
         timestamp: new Date().toISOString()
     };
     
-    // Отправляем админу
     bot.telegram.sendMessage(ADMIN_ID, 
         `🔔 NEW WITHDRAW REQUEST #${requestId}\n` +
         `👤 User: ${user.username} (${id})\n` +
@@ -396,7 +406,8 @@ app.post('/withdraw-skin', (req, res) => {
     res.json({ ok: true, requestId: requestId });
 });
 
-// --- АДМИН КОМАНДЫ ДЛЯ ВЫВОДОВ ---
+// ========== АДМИН КОМАНДЫ ==========
+
 bot.command(/approve_(.+)/, async (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const requestId = ctx.match[1];
@@ -410,7 +421,6 @@ bot.command(/approve_(.+)/, async (ctx) => {
     const skinIndex = user.inventory.findIndex(s => s.id == request.skin.id);
     if (skinIndex === -1) return ctx.reply("❌ Skin already withdrawn");
     
-    // Удаляем скин из инвентаря
     user.inventory.splice(skinIndex, 1);
     delete pendingWithdraws[requestId];
     saveDB();
@@ -431,7 +441,6 @@ bot.command(/reject_(.+)/, async (ctx) => {
     await bot.telegram.sendMessage(parseInt(request.userId), `❌ Your withdraw request for "${request.skin.name}" was rejected. Please contact support.`);
 });
 
-// --- АДМИН ПАНЕЛЬ ---
 bot.command('admin', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     
@@ -449,7 +458,7 @@ bot.command('admin', (ctx) => {
         `⏳ Pending withdraws: ${pendingCount}\n` +
         `━━━━━━━━━━━━━━━\n` +
         `Commands:\n` +
-        `/give [amount] [userId?] - give NC\n` +
+        `/give [amount] [userId] - give NC\n` +
         `/giveall [amount] - give NC to all\n` +
         `/promo [code] [amount] - create promo\n` +
         `/listusers - show top users\n` +
@@ -485,6 +494,16 @@ bot.command('giveall', (ctx) => {
     Object.keys(users).forEach(id => { users[id].balance += amount; });
     saveDB();
     ctx.reply(`✅ Given ${amount} NC to ALL ${Object.keys(users).length} users!`);
+});
+
+bot.command('promo', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    const [code, amount] = ctx.payload.split(' ');
+    if (!code || !amount) return ctx.reply("Usage: /promo [code] [amount]");
+
+    promoCodes[code.toLowerCase()] = parseInt(amount);
+    saveDB();
+    ctx.reply(`✅ Promo code "${code}" created for ${parseInt(amount).toLocaleString()} NC!`);
 });
 
 bot.command('listusers', (ctx) => {
@@ -548,26 +567,8 @@ bot.command('stats', (ctx) => {
     );
 });
 
-bot.command('promo', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const [code, amount] = ctx.payload.split(' ');
-    if (!code || !amount) return ctx.reply("/promo [code] [amount]");
+// ========== STARS PAYMENTS ==========
 
-    if (!global.promoCodes) global.promoCodes = {};
-    global.promoCodes[code.toLowerCase()] = parseInt(amount);
-    ctx.reply(`✅ Promo code ${code} for ${amount} NC created`);
-});
-
-app.post('/get-promo', (req, res) => {
-    const { code } = req.body;
-    if (global.promoCodes && global.promoCodes[code?.toLowerCase()]) {
-        res.json({ ok: true, amount: global.promoCodes[code.toLowerCase()] });
-    } else {
-        res.json({ ok: false });
-    }
-});
-
-// --- STARS PAYMENTS ---
 app.post('/create-stars-invoice', async (req, res) => {
     const { userId, stars } = req.body;
     try {
@@ -581,11 +582,13 @@ app.post('/create-stars-invoice', async (req, res) => {
         });
         res.json({ ok: true, link: link });
     } catch (e) {
+        console.error("Invoice Error:", e);
         res.status(500).json({ error: "Invoice error" });
     }
 });
 
 bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
+
 bot.on('successful_payment', async (ctx) => {
     const payload = ctx.message.successful_payment.invoice_payload;
     const [_, userId, stars] = payload.split('_');
@@ -596,7 +599,8 @@ bot.on('successful_payment', async (ctx) => {
     await ctx.reply(`✅ +${amountNC.toLocaleString()} NC credited!`);
 });
 
-// --- БОТ СТАРТ ---
+// ========== БОТ СТАРТ ==========
+
 bot.start(async (ctx) => {
     const userId = ctx.from.id.toString();
     const startPayload = ctx.payload;
@@ -617,8 +621,11 @@ bot.start(async (ctx) => {
     ]));
 });
 
+// ========== ЗАПУСК СЕРВЕРА ==========
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server started on port ${PORT}`);
+    console.log(`✅ Server started on port ${PORT}`);
     bot.launch();
+    console.log(`✅ Bot launched`);
 });
