@@ -166,7 +166,7 @@ app.post('/check-task', async (req, res) => {
     if (taskId === 'join_chat') {
         reward = 10000;
         needCheck = true;
-        checkChatId = '@TheCaseCs2'; // ВРЕМЕННО используем тот же канал, потом замени на нормальный username
+        checkChatId = '@TheCaseCs2';
     }
     if (taskId === 'boost_tg') {
         reward = 500000;
