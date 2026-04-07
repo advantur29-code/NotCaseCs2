@@ -217,26 +217,26 @@
         <div class="active-bonus" id="activeBonusInfo"></div>
         
         <div class="promo-code-row">
-            <input type="text" id="bonusCode" placeholder="Бонус код (10% / 25% / 50%)">
-            <button onclick="applyBonusPromo()">🎁 АКТИВИРОВАТЬ</button>
+            <input type="text" id="bonusCode" placeholder="Bonus code (10% / 25% / 50%)">
+            <button onclick="applyBonusPromo()">🎁 ACTIVATE</button>
         </div>
         
-        <button class="btn-main" onclick="topUp()" style="margin-top:15px;">💎 ПОПОЛНИТЬ ЧЕРЕЗ STARS</button>
+        <button class="btn-main" onclick="topUp()" style="margin-top:15px;">💎 DEPOSIT WITH STARS</button>
         
         <div style="margin-top:20px; padding-top:15px; border-top:1px solid #333;">
-            <label>🎟️ Промокод на монеты</label>
+            <label>🎟️ Promo code for coins</label>
             <div class="promo-code-row">
-                <input type="text" id="promoCode" placeholder="Промокод">
-                <button onclick="applyPromo()">Активировать</button>
+                <input type="text" id="promoCode" placeholder="Promo code">
+                <button onclick="applyPromo()">Activate</button>
             </div>
         </div>
     </div>
 </div>
 
 <nav class="nav">
-    <div id="nav-cases" class="nav-item active" onclick="nav('cases')"><span>🎲</span>Кейсы</div>
-    <div id="nav-profile" class="nav-item" onclick="nav('profile')"><span>👤</span>Профиль</div>
-    <div id="nav-shop" class="nav-item" onclick="nav('shop')"><span>💰</span>Магазин</div>
+    <div id="nav-cases" class="nav-item active" onclick="nav('cases')"><span>🎲</span>Cases</div>
+    <div id="nav-profile" class="nav-item" onclick="nav('profile')"><span>👤</span>Profile</div>
+    <div id="nav-shop" class="nav-item" onclick="nav('shop')"><span>💰</span>Shop</div>
 </nav>
 
 <script>
@@ -252,7 +252,7 @@
     let activeBonusCode = null;
 
     const skins = {
-        empty: { name: "❌ Ничего", color: "gray", img: "not.png", price: 0 },
+        empty: { name: "❌ Nothing", color: "gray", img: "not.png", price: 0 },
         skin_ak: { name: "AK-47 | Redline", color: "blue", img: "ak.png", price: 25000 },
         skin_awp: { name: "AWP | Dragon Lore", color: "blue", img: "awp.png", price: 30000 },
         skin_m4a4: { name: "M4A4 | Howl", color: "blue", img: "m4a4.png", price: 22000 },
@@ -283,11 +283,11 @@
     };
 
     const caseConfig = {
-        bomj: { title: "🚽 Бомж-Кейс", price: 2000, drop: [skins.skin_ak, skins.skin_awp], emptyChance: 99, forceEmpty: true },
-        normal: { title: "📦 Обычный Кейс", price: 50000, drop: [skins.skin_ak, skins.skin_awp, skins.skin_m4a4, skins.skin_usp, skins.skin_glock, skins.skin_deagle, skins.skin_m249, skins.skin_mac10, skins.skin_mag7, skins.skin_mp5, skins.skin_mp7, skins.skin_mp9, skins.skin_negev, skins.skin_nova, skins.skin_p2000, skins.skin_sawed], emptyChance: 50 },
-        advanced: { title: "⚡ Продвинутый Кейс", price: 200000, drop: [skins.skin_aug, skins.skin_famas, skins.skin_galil, skins.skin_m4a4s, skins.skin_sg, skins.skin_ssg, skins.knife5], emptyChance: 50 },
-        premium: { title: "💎 Премиум Кейс", price: 1000000, drop: [skins.knife1, skins.knife2, skins.skin_ak, skins.skin_awp, skins.skin_m4a4s, skins.skin_aug], emptyChance: 50 },
-        millionaire: { title: "👑 Кейс Миллионера", price: 5000000, drop: [skins.knife1, skins.knife2, skins.knife3, skins.knife4, skins.knife5], emptyChance: 0 }
+        bomj: { title: "🚽 Bomj Case", price: 2000, drop: [skins.skin_ak, skins.skin_awp], emptyChance: 99, forceEmpty: true },
+        normal: { title: "📦 Normal Case", price: 50000, drop: [skins.skin_ak, skins.skin_awp, skins.skin_m4a4, skins.skin_usp, skins.skin_glock, skins.skin_deagle, skins.skin_m249, skins.skin_mac10, skins.skin_mag7, skins.skin_mp5, skins.skin_mp7, skins.skin_mp9, skins.skin_negev, skins.skin_nova, skins.skin_p2000, skins.skin_sawed], emptyChance: 50 },
+        advanced: { title: "⚡ Advanced Case", price: 200000, drop: [skins.skin_aug, skins.skin_famas, skins.skin_galil, skins.skin_m4a4s, skins.skin_sg, skins.skin_ssg, skins.knife5], emptyChance: 50 },
+        premium: { title: "💎 Premium Case", price: 1000000, drop: [skins.knife1, skins.knife2, skins.skin_ak, skins.skin_awp, skins.skin_m4a4s, skins.skin_aug], emptyChance: 50 },
+        millionaire: { title: "👑 Millionaire Case", price: 5000000, drop: [skins.knife1, skins.knife2, skins.knife3, skins.knife4, skins.knife5], emptyChance: 0 }
     };
 
     function getRandomSkinFromCase(caseType) {
@@ -315,37 +315,6 @@
         } catch(e) {}
     }
 
-    async function checkSubscription() {
-        try {
-            const res = await fetch(`${SERVER_URL}/check-user-subscription`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    userId: tg.initDataUnsafe.user.id,
-                    chatId: '@TheCaseCs2'
-                })
-            });
-            const data = await res.json();
-            if (!data.ok && data.message) {
-                tg.showAlert(data.message);
-                if (data.newBalance !== undefined) {
-                    balance = data.newBalance;
-                    updateUI();
-                }
-            }
-            if (data.blocked) {
-                document.body.innerHTML = `
-                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; padding:20px; text-align:center;">
-                        <div style="font-size:64px;">🚫</div>
-                        <h2 style="color:#eb4b4b;">ДОСТУП ОГРАНИЧЕН</h2>
-                        <p>${data.message}</p>
-                        <button onclick="window.location.reload()" style="background:#ffca28; border:none; padding:12px 24px; border-radius:12px; margin-top:20px;">Проверить снова</button>
-                    </div>
-                `;
-            }
-        } catch(e) { console.error(e); }
-    }
-
     async function syncWithServer() {
         if (!tg.initDataUnsafe?.user) return;
         try {
@@ -362,7 +331,6 @@
             updateStreakDisplay();
             renderInventory();
             updateOnlineCount();
-            checkSubscription();
         } catch (e) { console.error(e); }
     }
 
@@ -383,25 +351,25 @@
         const reward = streak <= 10 ? 1000 + (streak - 1) * 250 : 3500;
         const percent = Math.min((streak / 10) * 100, 100);
         document.getElementById('streakFill').style.width = percent + '%';
-        document.getElementById('streakFill').innerHTML = `🔥 День ${streak} | ${reward} NC`;
+        document.getElementById('streakFill').innerHTML = `🔥 Day ${streak} | ${reward} NC`;
     }
 
     async function doTask(taskId, link) {
         tg.openTelegramLink(link);
         
         tg.showPopup({
-            title: "Проверка подписки",
-            message: "После подписки нажмите 'Проверить'",
+            title: "Subscription Check",
+            message: "After subscribing, press 'Check'",
             buttons: [
-                { id: "check", type: "default", text: "✅ ПРОВЕРИТЬ" },
-                { id: "cancel", type: "cancel", text: "ОТМЕНА" }
+                { id: "check", type: "default", text: "✅ CHECK" },
+                { id: "cancel", type: "cancel", text: "CANCEL" }
             ]
         }, async (btnId) => {
             if (btnId === "check") {
                 try {
                     let chatId = null;
                     if (taskId === 'sub_tg') chatId = '@TheCaseCs2';
-                    if (taskId === 'join_chat') chatId = '@+3Vp6w6MqO8FkNjEy';
+                    if (taskId === 'join_chat') chatId = '@TheCaseCs2';
                     if (taskId === 'boost_tg') chatId = '@TheCaseCs2';
                     
                     const res = await fetch(`${SERVER_URL}/check-task`, {
@@ -415,13 +383,13 @@
                     });
                     const data = await res.json();
                     if (data.ok) {
-                        tg.showAlert("✅ Задание выполнено!");
+                        tg.showAlert("✅ Task completed!");
                         balance = data.newBalance;
                         updateUI();
                     } else {
-                        tg.showAlert("❌ " + (data.error || "Вы не подписаны!"));
+                        tg.showAlert("❌ " + (data.error || "You are not subscribed!"));
                     }
-                } catch (e) { tg.showAlert("Ошибка проверки"); }
+                } catch (e) { tg.showAlert("Check error"); }
             }
         });
     }
@@ -435,7 +403,7 @@
             });
             const data = await res.json();
             if (data.ok) {
-                tg.showAlert(`🎁 +${data.reward} NC! Стрик: ${data.streak} дней`);
+                tg.showAlert(`🎁 +${data.reward} NC! Streak: ${data.streak} days`);
                 balance = data.newBalance;
                 if (currentUser) {
                     currentUser.streak = data.streak;
@@ -445,9 +413,9 @@
                 updateStreakDisplay();
                 syncWithServer();
             } else {
-                tg.showAlert("⏰ " + (data.error || "Уже получено сегодня"));
+                tg.showAlert("⏰ " + (data.error || "Already claimed today"));
             }
-        } catch (e) { tg.showAlert("Ошибка"); }
+        } catch (e) { tg.showAlert("Error"); }
     }
 
     async function saveTradeLink() {
@@ -457,12 +425,12 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, tradeLink: link })
         });
-        if (res.ok) tg.showAlert("✅ Сохранено!");
+        if (res.ok) tg.showAlert("✅ Saved!");
     }
 
     async function applyPromo() {
         const promo = document.getElementById('promoCode').value;
-        if (!promo) return tg.showAlert("❌ Введите промокод!");
+        if (!promo) return tg.showAlert("❌ Enter promo code!");
         
         const res = await fetch(`${SERVER_URL}/apply-promo`, {
             method: 'POST',
@@ -484,9 +452,9 @@
         const promo = document.getElementById('bonusCode').value;
         const starsAmount = parseInt(document.getElementById('starsIn').value) || 0;
         
-        if (!promo) return tg.showAlert("❌ Введите бонус код!");
+        if (!promo) return tg.showAlert("❌ Enter bonus code!");
         if (starsAmount === 0) {
-            tg.showAlert("❌ Сначала выберите сумму пополнения!");
+            tg.showAlert("❌ Select deposit amount first!");
             return;
         }
         
@@ -499,8 +467,8 @@
         if (data.ok) {
             activeBonusPercent = data.bonusPercent;
             activeBonusCode = promo;
-            tg.showAlert(`✅ Бонус код активирован! +${data.bonusPercent}% к пополнению!`);
-            document.getElementById('activeBonusInfo').innerHTML = `🎁 Активен бонус +${data.bonusPercent}% (код: ${promo})`;
+            tg.showAlert(`✅ Bonus code activated! +${data.bonusPercent}% bonus!`);
+            document.getElementById('activeBonusInfo').innerHTML = `🎁 Active bonus +${data.bonusPercent}% (code: ${promo})`;
             document.getElementById('activeBonusInfo').style.display = 'block';
             balance = data.newBalance;
             updateUI();
@@ -521,16 +489,16 @@
             balance += skinPrice;
             updateUI();
             await updateBalanceOnServer(balance);
-            tg.showAlert(`💰 Вы продали скин за ${skinPrice.toLocaleString()} NC!`);
+            tg.showAlert(`💰 Sold skin for ${skinPrice.toLocaleString()} NC!`);
             syncWithServer();
             closeSkinActions();
-        } else tg.showAlert("❌ Ошибка продажи");
+        } else tg.showAlert("❌ Sell error");
     }
 
     async function withdrawSkin(skinId, skinName) {
         const tradeLink = document.getElementById('tradeLinkInput').value;
         if (!tradeLink) {
-            tg.showAlert("❌ Сначала укажите трейд-ссылку!");
+            tg.showAlert("❌ Set trade link first!");
             return;
         }
         
@@ -541,7 +509,7 @@
         });
         const data = await res.json();
         if (data.ok) {
-            tg.showAlert(`✅ Заявка на вывод "${skinName}" отправлена! Администратор рассмотрит её.`);
+            tg.showAlert(`✅ Withdraw request for "${skinName}" sent! Admin will review.`);
             syncWithServer();
             closeSkinActions();
         } else {
@@ -553,7 +521,7 @@
         const c = caseConfig[type];
         if (!c) return;
         document.getElementById('modalTitle').innerText = c.title;
-        document.getElementById('modalPrice').innerHTML = "💰 Цена: " + c.price.toLocaleString() + " NC";
+        document.getElementById('modalPrice').innerHTML = "💰 Price: " + c.price.toLocaleString() + " NC";
         document.getElementById('modalSpinBtn').onclick = () => startSpin(c.price, type);
         
         const grid = document.getElementById('poolGrid');
@@ -575,7 +543,7 @@
     }
 
     async function startSpin(price, type) {
-        if (balance < price) return tg.showAlert("❌ Мало NC!");
+        if (balance < price) return tg.showAlert("❌ Not enough NC!");
         const btn = document.getElementById('modalSpinBtn');
         btn.disabled = true;
         
@@ -600,15 +568,15 @@
         }, 50);
         
         setTimeout(async () => {
-            if (winSkin.name !== "❌ Ничего") {
+            if (winSkin.name !== "❌ Nothing") {
                 await fetch(`${SERVER_URL}/add-skin`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, skin: winSkin })
                 });
-                tg.showAlert(`🎉 ВЫ ВЫИГРАЛИ: ${winSkin.name} (${winSkin.price.toLocaleString()} NC)!`);
+                tg.showAlert(`🎉 YOU WON: ${winSkin.name} (${winSkin.price.toLocaleString()} NC)!`);
                 syncWithServer();
-            } else tg.showAlert("😭 Ничего не выпало!");
+            } else tg.showAlert("😭 Nothing dropped!");
             btn.disabled = false;
             closeCase();
         }, 5500);
@@ -624,7 +592,7 @@
         });
         const data = await res.json();
         if (data.ok) {
-            tg.showAlert(`🏭 Фабрика запущена! +${data.incomeRate} NC/час`);
+            tg.showAlert(`🏭 Factory started! +${data.incomeRate} NC/hour`);
             syncWithServer();
         } else tg.showAlert("❌ " + data.error);
         closeSkinActions();
@@ -640,10 +608,10 @@
         const data = await res.json();
         if (data.ok) {
             if (data.deleted) {
-                tg.showAlert(`💰 Собрано ${data.earned} NC! Скин сломался и исчез из инвентаря.`);
+                tg.showAlert(`💰 Collected ${data.earned} NC! Skin broke and disappeared.`);
                 closeFactory();
             } else {
-                tg.showAlert(`💰 Собрано ${data.earned} NC!`);
+                tg.showAlert(`💰 Collected ${data.earned} NC!`);
                 if (data.breakAt) updateFactoryTimer(data.breakAt);
             }
             if (data.newBalance) balance = data.newBalance;
@@ -661,11 +629,11 @@
         });
         const data = await res.json();
         if (data.success) {
-            tg.showAlert(`🚀 УСПЕХ! Доход x2 (уровень ${data.level})`);
+            tg.showAlert(`🚀 SUCCESS! Income x2 (level ${data.level})`);
             if (data.breakAt) updateFactoryTimer(data.breakAt);
             syncWithServer();
         } else if (data.deleted) {
-            tg.showAlert("💥 РАЗГОН НЕ УДАЛСЯ! Скин сломан и исчез");
+            tg.showAlert("💥 BOOST FAILED! Skin broke and disappeared");
             syncWithServer();
             closeFactory();
         } else tg.showAlert("❌ " + data.error);
@@ -680,7 +648,7 @@
             
             if (timeLeft <= 0) {
                 clearInterval(factoryTimerInterval);
-                document.getElementById('factoryTimer').innerHTML = "⏰ СКИН СЛОМАН!";
+                document.getElementById('factoryTimer').innerHTML = "⏰ SKIN BROKEN!";
                 return;
             }
             
@@ -688,7 +656,7 @@
             const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
             
-            document.getElementById('factoryTimer').innerHTML = `⏱ Сломается через: ${hours}ч ${minutes}м ${seconds}с`;
+            document.getElementById('factoryTimer').innerHTML = `⏱ Breaks in: ${hours}h ${minutes}m ${seconds}s`;
         }, 1000);
     }
 
@@ -705,25 +673,25 @@
                 <img src="${skin.img}" onerror="this.src='not.png'">
                 <div class="skin-name">${skin.name}</div>
                 <div class="skin-price">💰 ${skin.price.toLocaleString()}</div>
-                ${skin.factory?.broken ? '<div class="factory-badge broken-badge">💔 Сломан</div>' : ''}
+                ${skin.factory?.broken ? '<div class="factory-badge broken-badge">💔 Broken</div>' : ''}
             </div>
-        `).join('') || "<div style='text-align:center; color:gray'>Нет предметов</div>";
+        `).join('') || "<div style='text-align:center; color:gray'>No items</div>";
         
         factoryDiv.innerHTML = activeFactory.map(skin => `
             <div class="inventory-card" onclick="openFactoryModal('${skin.id}', '${skin.name}', '${skin.img}', ${skin.factory.incomeRate}, ${skin.factory.boostLevel}, ${skin.factory.breakAt})">
                 <img src="${skin.img}" onerror="this.src='not.png'">
                 <div class="skin-name">${skin.name}</div>
-                <div class="skin-price">⚡ ${skin.factory.incomeRate} NC/час</div>
-                <div class="factory-badge">🏭 Уровень ${skin.factory.boostLevel}</div>
+                <div class="skin-price">⚡ ${skin.factory.incomeRate} NC/hour</div>
+                <div class="factory-badge">🏭 Level ${skin.factory.boostLevel}</div>
             </div>
-        `).join('') || "<div style='text-align:center; color:gray'>Нет активных фабрик</div>";
+        `).join('') || "<div style='text-align:center; color:gray'>No active factories</div>";
     }
     
     function openSkinActions(skinId, name, img, price) {
         currentActionSkin = { id: skinId, name, img, price };
         document.getElementById('actionSkinName').innerText = name;
         document.getElementById('actionSkinImg').src = img;
-        document.getElementById('actionSkinPrice').innerHTML = `💰 Стоимость: ${price.toLocaleString()} NC`;
+        document.getElementById('actionSkinPrice').innerHTML = `💰 Value: ${price.toLocaleString()} NC`;
         document.getElementById('sellSkinBtn').onclick = () => sellSkin(skinId, price);
         document.getElementById('factorySkinBtn').onclick = () => startFactory(skinId);
         document.getElementById('withdrawSkinBtn').onclick = () => withdrawSkin(skinId, name);
@@ -739,7 +707,7 @@
         currentFactorySkinId = skinId;
         document.getElementById('factorySkinName').innerText = name;
         document.getElementById('factorySkinImg').src = img;
-        document.getElementById('factoryInfo').innerHTML = `⚡ Доход: ${rate} NC/час<br>📈 Уровень: ${level}`;
+        document.getElementById('factoryInfo').innerHTML = `⚡ Income: ${rate} NC/hour<br>📈 Boost level: ${level}`;
         document.getElementById('collectBtn').onclick = () => collectFactoryIncome();
         document.getElementById('boostBtn').onclick = () => boostFactory();
         document.getElementById('factoryModal').style.display = 'block';
@@ -783,7 +751,7 @@
                 if (status === 'paid') {
                     await syncWithServer();
                     if (activeBonusCode) {
-                        tg.showAlert(`🎁 Бонус ${activeBonusPercent}% уже начислен!`);
+                        tg.showAlert(`🎁 Bonus ${activeBonusPercent}% already added!`);
                         activeBonusPercent = 0;
                         activeBonusCode = null;
                         document.getElementById('activeBonusInfo').style.display = 'none';
@@ -808,7 +776,7 @@
         const totalStars = stars + bonusStars;
         document.getElementById('ncOut').innerHTML = (totalStars * 1000).toLocaleString();
         if (bonus > 0) {
-            document.getElementById('ncOut').innerHTML = `${(totalStars * 1000).toLocaleString()} (+${bonusStars * 1000} бонус)`;
+            document.getElementById('ncOut').innerHTML = `${(totalStars * 1000).toLocaleString()} (+${bonusStars * 1000} bonus)`;
         }
     }
     
@@ -823,7 +791,7 @@
         const link = document.getElementById('refLink');
         link.select();
         document.execCommand('copy');
-        tg.showAlert("🔗 Ссылка скопирована!");
+        tg.showAlert("🔗 Link copied!");
     }
     
     setInterval(updateOnlineCount, 30000);
