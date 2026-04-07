@@ -234,6 +234,8 @@ app.post('/daily-bonus', (req, res) => {
     res.json({ ok: true, newBalance: user.balance, streak: streak, reward: reward });
 });
 
+// ========== ПРОМОКОДЫ ==========
+
 app.post('/apply-promo', (req, res) => {
     const id = req.body.userId?.toString();
     const { promo } = req.body;
@@ -247,13 +249,16 @@ app.post('/apply-promo', (req, res) => {
     }
     
     if (promoCodes[code]) {
-        const bonus = promoCodes[code];
+        const bonus = promoCodes[code].amount || promoCodes[code];
         user.balance += bonus;
         user.usedPromos.push(code);
         
-        // Уменьшаем количество использований
-        promoCodes[code].usesLeft--;
-        if (promoCodes[code].usesLeft <= 0) {
+        if (promoCodes[code].usesLeft) {
+            promoCodes[code].usesLeft--;
+            if (promoCodes[code].usesLeft <= 0) {
+                delete promoCodes[code];
+            }
+        } else {
             delete promoCodes[code];
         }
         
@@ -284,9 +289,12 @@ app.post('/apply-bonus-promo', (req, res) => {
         user.balance += bonusNC;
         user.usedBonusPromos.push(code);
         
-        // Уменьшаем количество использований
-        bonusPromoCodes[code].usesLeft--;
-        if (bonusPromoCodes[code].usesLeft <= 0) {
+        if (bonusPromoCodes[code].usesLeft) {
+            bonusPromoCodes[code].usesLeft--;
+            if (bonusPromoCodes[code].usesLeft <= 0) {
+                delete bonusPromoCodes[code];
+            }
+        } else {
             delete bonusPromoCodes[code];
         }
         
@@ -414,17 +422,6 @@ app.post('/factory-boost', (req, res) => {
         saveDB();
         res.json({ ok: true, success: false, broken: true, deleted: true });
     }
-});
-
-app.post('/factory-info', (req, res) => {
-    const { userId, skinId } = req.body;
-    const user = users[userId?.toString()];
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    const skin = user.inventory.find(s => s.id == skinId);
-    if (!skin || !skin.factory.active) return res.status(404).json({ error: "Factory not found" });
-
-    res.json({ ok: true, breakAt: skin.factory.breakAt, incomeRate: skin.factory.incomeRate, boostLevel: skin.factory.boostLevel });
 });
 
 // ========== ВЫВОД СКИНОВ ==========
