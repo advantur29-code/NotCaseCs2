@@ -19,6 +19,7 @@ app.use((req, res, next) => {
 // ========== БАЗА ДАННЫХ ==========
 let users = {};
 let promoCodes = {};
+let bonusPromoCodes = {};
 
 const loadDB = () => {
     if (fs.existsSync(DB_FILE)) {
@@ -26,11 +27,13 @@ const loadDB = () => {
             const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
             users = data.users || {};
             promoCodes = data.promoCodes || {};
-            console.log(`[DB] Loaded: ${Object.keys(users).length} users, ${Object.keys(promoCodes).length} promos`);
+            bonusPromoCodes = data.bonusPromoCodes || {};
+            console.log(`[DB] Loaded: ${Object.keys(users).length} users, ${Object.keys(promoCodes).length} promos, ${Object.keys(bonusPromoCodes).length} bonus promos`);
         } catch (e) { 
             console.error("[DB] Load Error:", e);
             users = {};
             promoCodes = {};
+            bonusPromoCodes = {};
         }
     }
 };
@@ -38,7 +41,7 @@ loadDB();
 
 const saveDB = () => {
     try {
-        fs.writeFileSync(DB_FILE, JSON.stringify({ users, promoCodes }, null, 2), 'utf8');
+        fs.writeFileSync(DB_FILE, JSON.stringify({ users, promoCodes, bonusPromoCodes }, null, 2), 'utf8');
     } catch (e) { console.error("[DB] Save Error:", e); }
 };
 
@@ -48,6 +51,7 @@ const initUser = (id, username = 'unknown') => {
             username: username,
             balance: 10000,
             usedPromos: [],
+            usedBonusPromos: [],
             completedTasks: [],
             lastBonus: null,
             streak: 0,
@@ -56,7 +60,8 @@ const initUser = (id, username = 'unknown') => {
             invitedBy: null,
             inventory: [],
             referrals: [],
-            totalEarnedFromReferrals: 0
+            totalEarnedFromReferrals: 0,
+            lastSeen: Date.now()
         };
         saveDB();
     }
@@ -71,7 +76,15 @@ app.post('/sync-user', (req, res) => {
     const userId = req.body.userId?.toString();
     if (!userId) return res.status(400).json({ error: "No ID" });
     const user = initUser(userId, req.body.username);
+    user.lastSeen = Date.now();
+    saveDB();
     res.json(user);
+});
+
+app.post('/online-count', (req, res) => {
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    const onlineCount = Object.values(users).filter(u => u.lastSeen > fiveMinutesAgo).length;
+    res.json({ online: onlineCount });
 });
 
 app.post('/save-trade', (req, res) => {
@@ -238,12 +251,50 @@ app.post('/apply-promo', (req, res) => {
         user.balance += bonus;
         user.usedPromos.push(code);
         
-        delete promoCodes[code];
+        // Уменьшаем количество использований
+        promoCodes[code].usesLeft--;
+        if (promoCodes[code].usesLeft <= 0) {
+            delete promoCodes[code];
+        }
+        
         saveDB();
         return res.json({ ok: true, newBalance: user.balance });
     }
     
     res.status(400).json({ error: "Invalid or expired promo code" });
+});
+
+app.post('/apply-bonus-promo', (req, res) => {
+    const id = req.body.userId?.toString();
+    const { promo, starsAmount } = req.body;
+    const user = initUser(id);
+
+    if (!user.usedBonusPromos) user.usedBonusPromos = [];
+    const code = promo?.toLowerCase();
+    
+    if (user.usedBonusPromos.includes(code)) {
+        return res.status(400).json({ error: "You already used this bonus code" });
+    }
+    
+    if (bonusPromoCodes[code]) {
+        const bonusPercent = bonusPromoCodes[code].percent;
+        const bonusStars = Math.floor(starsAmount * bonusPercent / 100);
+        const bonusNC = bonusStars * 1000;
+        
+        user.balance += bonusNC;
+        user.usedBonusPromos.push(code);
+        
+        // Уменьшаем количество использований
+        bonusPromoCodes[code].usesLeft--;
+        if (bonusPromoCodes[code].usesLeft <= 0) {
+            delete bonusPromoCodes[code];
+        }
+        
+        saveDB();
+        return res.json({ ok: true, newBalance: user.balance, bonusNC: bonusNC, bonusPercent: bonusPercent });
+    }
+    
+    res.status(400).json({ error: "Invalid or expired bonus code" });
 });
 
 app.post('/track-referral', (req, res) => {
@@ -300,7 +351,7 @@ app.post('/factory-start', (req, res) => {
     skin.factory.lastCollect = Date.now();
     saveDB();
 
-    res.json({ ok: true, incomeRate: baseIncome });
+    res.json({ ok: true, incomeRate: baseIncome, breakAt: skin.factory.breakAt });
 });
 
 app.post('/factory-collect', (req, res) => {
@@ -334,7 +385,7 @@ app.post('/factory-collect', (req, res) => {
     user.balance += earned;
     saveDB();
 
-    res.json({ ok: true, earned, broken: false, newBalance: user.balance });
+    res.json({ ok: true, earned, broken: false, newBalance: user.balance, breakAt: skin.factory.breakAt });
 });
 
 app.post('/factory-boost', (req, res) => {
@@ -357,12 +408,23 @@ app.post('/factory-boost', (req, res) => {
         skin.factory.incomeRate *= 2;
         skin.factory.boostLevel++;
         saveDB();
-        res.json({ ok: true, success: true, newRate: skin.factory.incomeRate, level: skin.factory.boostLevel });
+        res.json({ ok: true, success: true, newRate: skin.factory.incomeRate, level: skin.factory.boostLevel, breakAt: skin.factory.breakAt });
     } else {
         user.inventory.splice(skinIndex, 1);
         saveDB();
         res.json({ ok: true, success: false, broken: true, deleted: true });
     }
+});
+
+app.post('/factory-info', (req, res) => {
+    const { userId, skinId } = req.body;
+    const user = users[userId?.toString()];
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const skin = user.inventory.find(s => s.id == skinId);
+    if (!skin || !skin.factory.active) return res.status(404).json({ error: "Factory not found" });
+
+    res.json({ ok: true, breakAt: skin.factory.breakAt, incomeRate: skin.factory.incomeRate, boostLevel: skin.factory.boostLevel });
 });
 
 // ========== ВЫВОД СКИНОВ ==========
@@ -460,7 +522,8 @@ bot.command('admin', (ctx) => {
         `Commands:\n` +
         `/give [amount] [userId] - give NC\n` +
         `/giveall [amount] - give NC to all\n` +
-        `/promo [code] [amount] - create promo\n` +
+        `/promo [code] [amount] [uses] - create promo\n` +
+        `/bonus [code] [percent] [uses] - create bonus promo\n` +
         `/listusers - show top users\n` +
         `/resetuser [userId] - reset user\n` +
         `/broadcast [message] - send to all\n` +
@@ -498,12 +561,30 @@ bot.command('giveall', (ctx) => {
 
 bot.command('promo', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    const [code, amount] = ctx.payload.split(' ');
-    if (!code || !amount) return ctx.reply("Usage: /promo [code] [amount]");
+    const [code, amount, uses] = ctx.payload.split(' ');
+    if (!code || !amount) return ctx.reply("Usage: /promo [code] [amount] [uses]");
 
-    promoCodes[code.toLowerCase()] = parseInt(amount);
+    const usesCount = parseInt(uses) || 1;
+    promoCodes[code.toLowerCase()] = {
+        amount: parseInt(amount),
+        usesLeft: usesCount
+    };
     saveDB();
-    ctx.reply(`✅ Promo code "${code}" created for ${parseInt(amount).toLocaleString()} NC!`);
+    ctx.reply(`✅ Promo code "${code}" created for ${parseInt(amount).toLocaleString()} NC (${usesCount} uses left!)`);
+});
+
+bot.command('bonus', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    const [code, percent, uses] = ctx.payload.split(' ');
+    if (!code || !percent) return ctx.reply("Usage: /bonus [code] [percent] [uses]");
+
+    const usesCount = parseInt(uses) || 1;
+    bonusPromoCodes[code.toLowerCase()] = {
+        percent: parseInt(percent),
+        usesLeft: usesCount
+    };
+    saveDB();
+    ctx.reply(`✅ Bonus code "${code}" created for ${percent}% bonus on deposit (${usesCount} uses left!)`);
 });
 
 bot.command('listusers', (ctx) => {
