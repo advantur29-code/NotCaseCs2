@@ -74,9 +74,15 @@
         
         .announcement { background: linear-gradient(135deg, #8847ff, #d32ee6); padding: 12px; border-radius: 12px; margin-bottom: 15px; text-align: center; font-size: 12px; cursor: pointer; }
         
-        .bonus-input { display: flex; gap: 10px; margin-top: 10px; }
-        .bonus-input input { flex: 2; margin: 0; }
-        .bonus-input button { flex: 1; margin: 0; }
+        .shop-card { background: #1a1a1a; padding: 20px; border-radius: 16px; text-align: center; border: 1px solid #333; }
+        .bonus-input-group { display: flex; gap: 10px; margin-top: 15px; }
+        .bonus-input-group input { flex: 2; margin: 0; }
+        .bonus-input-group button { flex: 1; margin: 0; background: #8847ff; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .active-bonus { background: #4caf50; padding: 10px; border-radius: 10px; margin-top: 10px; font-size: 12px; display: none; }
+        
+        .promo-code-row { display: flex; gap: 10px; margin-top: 15px; }
+        .promo-code-row input { flex: 2; margin: 0; }
+        .promo-code-row button { flex: 1; margin: 0; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -193,35 +199,37 @@
         <button class="btn-main" style="background:#8847ff" onclick="copyRefLink()">📋 Копировать</button>
         <div style="font-size:10px; color:#888; margin-top:8px;">🎁 5 уровней: +1000 → +500 → +250 → +100 → +50 NC</div>
     </div>
-
-    <div class="profile-section">
-        <label>🎟️ Промокод на монеты</label>
-        <input type="text" id="promoCode" placeholder="Введите промокод">
-        <button class="btn-main" onclick="applyPromo()">Активировать</button>
-    </div>
-
-    <div class="profile-section">
-        <label>🎁 Бонус код на пополнение (10% / 25%)</label>
-        <div class="bonus-input">
-            <input type="text" id="bonusCode" placeholder="Введите бонус код">
-            <button class="btn-main" onclick="applyBonusPromo()">Активировать</button>
-        </div>
-        <div style="font-size:10px; color:#888; margin-top:5px;">Активируйте бонус код ПЕРЕД пополнением!</div>
-    </div>
 </div>
 
 <div id="page-shop" class="page">
-    <div style="text-align:center; margin-bottom:20px; background:#1a1a1a; padding:20px; border-radius:16px;">
+    <div class="shop-card">
         <h3>⭐ 1 Star = 1,000 NC</h3>
+        
         <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin:15px 0;">
             <button class="star-btn" onclick="setStars(10)">⭐ 10</button>
             <button class="star-btn" onclick="setStars(50)">⭐ 50</button>
             <button class="star-btn" onclick="setStars(100)">⭐ 100</button>
             <button class="star-btn" onclick="setStars(500)">⭐ 500</button>
         </div>
-        <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:120px; text-align:center;"> ⭐ = <span id="ncOut" style="color:gold; font-weight:bold">10,000</span> NC
-        <div id="activeBonusInfo" style="font-size:12px; color:#4caf50; margin:10px 0; display:none;"></div>
-        <button class="btn-main" onclick="topUp()" style="margin-top:15px;">💎 ПОПОЛНИТЬ</button>
+        
+        <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:120px; text-align:center; display:inline-block;"> ⭐ = <span id="ncOut" style="color:gold; font-weight:bold">10,000</span> NC
+        
+        <div class="active-bonus" id="activeBonusInfo"></div>
+        
+        <div class="promo-code-row">
+            <input type="text" id="bonusCode" placeholder="Бонус код (10% / 25% / 50%)">
+            <button onclick="applyBonusPromo()">🎁 АКТИВИРОВАТЬ</button>
+        </div>
+        
+        <button class="btn-main" onclick="topUp()" style="margin-top:15px;">💎 ПОПОЛНИТЬ ЧЕРЕЗ STARS</button>
+        
+        <div style="margin-top:20px; padding-top:15px; border-top:1px solid #333;">
+            <label>🎟️ Промокод на монеты</label>
+            <div class="promo-code-row">
+                <input type="text" id="promoCode" placeholder="Промокод">
+                <button onclick="applyPromo()">Активировать</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -422,6 +430,8 @@
 
     async function applyPromo() {
         const promo = document.getElementById('promoCode').value;
+        if (!promo) return tg.showAlert("❌ Введите промокод!");
+        
         const res = await fetch(`${SERVER_URL}/apply-promo`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -429,17 +439,20 @@
         });
         const data = await res.json();
         if (data.ok) {
-            tg.showAlert(`✅ +${data.newBalance - balance} NC`);
+            tg.showAlert(`✅ +${data.newBalance - balance} NC!`);
             balance = data.newBalance;
             updateUI();
             document.getElementById('promoCode').value = '';
-        } else tg.showAlert("❌ Неверный промокод");
+        } else {
+            tg.showAlert("❌ " + data.error);
+        }
     }
 
     async function applyBonusPromo() {
         const promo = document.getElementById('bonusCode').value;
         const starsAmount = parseInt(document.getElementById('starsIn').value) || 0;
         
+        if (!promo) return tg.showAlert("❌ Введите бонус код!");
         if (starsAmount === 0) {
             tg.showAlert("❌ Сначала выберите сумму пополнения!");
             return;
@@ -454,11 +467,12 @@
         if (data.ok) {
             activeBonusPercent = data.bonusPercent;
             activeBonusCode = promo;
-            tg.showAlert(`✅ Бонус код активирован! +${data.bonusPercent}% к пополнению (${data.bonusNC.toLocaleString()} NC бонусом!)`);
-            document.getElementById('activeBonusInfo').style.display = 'block';
+            tg.showAlert(`✅ Бонус код активирован! +${data.bonusPercent}% к пополнению!`);
             document.getElementById('activeBonusInfo').innerHTML = `🎁 Активен бонус +${data.bonusPercent}% (код: ${promo})`;
+            document.getElementById('activeBonusInfo').style.display = 'block';
             balance = data.newBalance;
             updateUI();
+            calcNC();
             document.getElementById('bonusCode').value = '';
         } else {
             tg.showAlert("❌ " + data.error);
@@ -725,27 +739,6 @@
     
     async function topUp() {
         let stars = parseInt(document.getElementById('starsIn').value);
-        const bonusCode = document.getElementById('bonusCode').value;
-        
-        // Если есть активный бонус код, применяем его
-        if (bonusCode && !activeBonusCode) {
-            const res = await fetch(`${SERVER_URL}/apply-bonus-promo`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, promo: bonusCode, starsAmount: stars })
-            });
-            const data = await res.json();
-            if (data.ok) {
-                activeBonusPercent = data.bonusPercent;
-                activeBonusCode = bonusCode;
-                tg.showAlert(`✅ Бонус код активирован! +${data.bonusPercent}% к пополнению!`);
-                document.getElementById('activeBonusInfo').style.display = 'block';
-                document.getElementById('activeBonusInfo').innerHTML = `🎁 Активен бонус +${data.bonusPercent}% (код: ${bonusCode})`;
-                balance = data.newBalance;
-                updateUI();
-                document.getElementById('bonusCode').value = '';
-            }
-        }
         
         const res = await fetch(`${SERVER_URL}/create-stars-invoice`, {
             method: 'POST',
@@ -771,7 +764,6 @@
     function setStars(v) { 
         document.getElementById('starsIn').value = v; 
         calcNC();
-        // Сбрасываем активный бонус при смене суммы
         activeBonusPercent = 0;
         activeBonusCode = null;
         document.getElementById('activeBonusInfo').style.display = 'none';
