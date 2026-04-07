@@ -61,7 +61,10 @@ const initUser = (id, username = 'unknown') => {
             inventory: [],
             referrals: [],
             totalEarnedFromReferrals: 0,
-            lastSeen: Date.now()
+            lastSeen: Date.now(),
+            warnedForUnsub: false,
+            unsubWarningDate: null,
+            unsubExpired: false
         };
         saveDB();
     }
@@ -465,6 +468,169 @@ app.post('/withdraw-skin', (req, res) => {
     res.json({ ok: true, requestId: requestId });
 });
 
+// ========== ПРОВЕРКА ПОДПИСОК И СНЯТИЕ БАЛАНСА ==========
+
+app.post('/check-user-subscription', async (req, res) => {
+    const { userId } = req.body;
+    const id = userId?.toString();
+    
+    if (!id) return res.status(400).json({ error: "No user ID" });
+    
+    const user = users[id];
+    if (!user) return res.status(404).json({ error: "User not found" });
+    
+    const channelsToCheck = [
+        { name: '@TheCaseCs2', taskId: 'sub_tg' },
+        { name: '@+3Vp6w6MqO8FkNjEy', taskId: 'join_chat' }
+    ];
+    
+    let allSubscribed = true;
+    let warnings = [];
+    
+    for (const channel of channelsToCheck) {
+        try {
+            const chatMember = await bot.telegram.getChatMember(channel.name, parseInt(id));
+            const isMember = ['member', 'administrator', 'creator'].includes(chatMember.status);
+            
+            if (!isMember) {
+                allSubscribed = false;
+                if (!user.warnedForUnsub) {
+                    warnings.push(channel.name);
+                }
+            }
+        } catch (e) {
+            console.error(`Error checking ${channel.name}:`, e);
+        }
+    }
+    
+    if (!allSubscribed && !user.warnedForUnsub) {
+        const penalty = 25000;
+        user.balance -= penalty;
+        user.warnedForUnsub = true;
+        user.unsubWarningDate = Date.now();
+        saveDB();
+        
+        try {
+            await bot.telegram.sendMessage(parseInt(id), 
+                `⚠️ ВНИМАНИЕ! ⚠️\n\n` +
+                `Вы отписались от обязательных каналов:\n${warnings.join(', ')}\n\n` +
+                `С вашего баланса снято ${penalty.toLocaleString()} NC!\n\n` +
+                `❗ Если вы не подпишетесь снова в течение 24 часов, ваш баланс НЕ БУДЕТ ВОССТАНОВЛЕН, даже если он станет отрицательным!\n\n` +
+                `Подпишитесь обратно, чтобы продолжить пользоваться ботом.`
+            );
+        } catch(e) {}
+        
+        return res.json({ 
+            ok: false, 
+            warned: true, 
+            penalty: penalty, 
+            newBalance: user.balance,
+            message: `Вы отписались от каналов! Снято ${penalty.toLocaleString()} NC. Подпишитесь снова в течение 24 часов.`
+        });
+    }
+    
+    if (!allSubscribed && user.warnedForUnsub && !user.unsubExpired) {
+        const timeSinceWarning = Date.now() - (user.unsubWarningDate || 0);
+        const hoursLeft = Math.max(0, 24 - Math.floor(timeSinceWarning / (1000 * 60 * 60)));
+        
+        if (hoursLeft > 0) {
+            return res.json({ 
+                ok: false, 
+                warned: true, 
+                permanent: false,
+                hoursLeft: hoursLeft,
+                message: `⚠️ Вы всё ещё не подписаны! Баланс НЕ БУДЕТ ВОССТАНОВЛЕН. Осталось часов: ${hoursLeft}`
+            });
+        } else {
+            user.unsubExpired = true;
+            saveDB();
+            return res.json({ 
+                ok: false, 
+                blocked: true,
+                message: `❌ ДОСТУП ОГРАНИЧЕН! Вы не подписались в течение 24 часов. Баланс НЕ ВОССТАНАВЛИВАЕТСЯ. Обратитесь к администратору.`
+            });
+        }
+    }
+    
+    if (allSubscribed && user.warnedForUnsub) {
+        user.warnedForUnsub = false;
+        user.unsubWarningDate = null;
+        saveDB();
+        return res.json({ 
+            ok: true, 
+            message: "✅ Спасибо что подписались! Баланс не возвращён, но вы можете продолжать играть."
+        });
+    }
+    
+    res.json({ ok: true, message: "✅ Вы подписаны на все каналы!" });
+});
+
+// Периодическая проверка всех пользователей (раз в час)
+setInterval(async () => {
+    console.log("[AutoCheck] Checking all users subscriptions...");
+    let checked = 0;
+    let penalized = 0;
+    
+    for (const [id, user] of Object.entries(users)) {
+        if (user.unsubExpired) continue;
+        
+        const channelsToCheck = [
+            { name: '@TheCaseCs2' },
+            { name: '@+3Vp6w6MqO8FkNjEy' }
+        ];
+        
+        let allSubscribed = true;
+        
+        for (const channel of channelsToCheck) {
+            try {
+                const chatMember = await bot.telegram.getChatMember(channel.name, parseInt(id));
+                const isMember = ['member', 'administrator', 'creator'].includes(chatMember.status);
+                if (!isMember) allSubscribed = false;
+            } catch (e) {
+                allSubscribed = false;
+            }
+        }
+        
+        if (!allSubscribed && !user.warnedForUnsub) {
+            const penalty = 25000;
+            user.balance -= penalty;
+            user.warnedForUnsub = true;
+            user.unsubWarningDate = Date.now();
+            penalized++;
+            
+            try {
+                await bot.telegram.sendMessage(parseInt(id), 
+                    `⚠️ ВНИМАНИЕ! ⚠️\n\n` +
+                    `Вы отписались от обязательных каналов!\n\n` +
+                    `С вашего баланса снято ${penalty.toLocaleString()} NC!\n\n` +
+                    `❗ Если вы не подпишетесь снова в течение 24 часов, ваш баланс НЕ БУДЕТ ВОССТАНОВЛЕН!\n\n` +
+                    `Подпишитесь обратно, чтобы продолжить пользоваться ботом.`
+                );
+            } catch(e) {}
+        }
+        
+        if (!allSubscribed && user.warnedForUnsub && !user.unsubExpired) {
+            const timeSinceWarning = Date.now() - (user.unsubWarningDate || 0);
+            if (timeSinceWarning > 24 * 60 * 60 * 1000) {
+                user.unsubExpired = true;
+                try {
+                    await bot.telegram.sendMessage(parseInt(id), 
+                        `❌ ДОСТУП ОГРАНИЧЕН! ❌\n\n` +
+                        `Вы не подписались на каналы в течение 24 часов.\n` +
+                        `Ваш баланс НЕ ВОССТАНАВЛИВАЕТСЯ, даже если он отрицательный.\n\n` +
+                        `Для разблокировки обратитесь к администратору.`
+                    );
+                } catch(e) {}
+            }
+        }
+        
+        checked++;
+    }
+    
+    if (penalized > 0) saveDB();
+    console.log(`[AutoCheck] Checked: ${checked}, Penalized: ${penalized}`);
+}, 60 * 60 * 1000);
+
 // ========== АДМИН КОМАНДЫ ==========
 
 bot.command(/approve_(.+)/, async (ctx) => {
@@ -524,7 +690,8 @@ bot.command('admin', (ctx) => {
         `/listusers - show top users\n` +
         `/resetuser [userId] - reset user\n` +
         `/broadcast [message] - send to all\n` +
-        `/stats - detailed stats`
+        `/stats - detailed stats\n` +
+        `/unblock [userId] - unblock user`
     );
 });
 
@@ -604,8 +771,23 @@ bot.command('resetuser', (ctx) => {
     
     users[targetId].balance = 0;
     users[targetId].inventory = [];
+    users[targetId].warnedForUnsub = false;
+    users[targetId].unsubWarningDate = null;
+    users[targetId].unsubExpired = false;
     saveDB();
-    ctx.reply(`✅ User ${targetId} reset (balance 0, inventory cleared)`);
+    ctx.reply(`✅ User ${targetId} reset (balance 0, inventory cleared, unsub flags cleared)`);
+});
+
+bot.command('unblock', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    const targetId = ctx.payload.trim();
+    if (!targetId || !users[targetId]) return ctx.reply("❌ User not found");
+    
+    users[targetId].unsubExpired = false;
+    users[targetId].warnedForUnsub = false;
+    users[targetId].unsubWarningDate = null;
+    saveDB();
+    ctx.reply(`✅ User ${targetId} unblocked!`);
 });
 
 bot.command('broadcast', async (ctx) => {
@@ -636,6 +818,7 @@ bot.command('stats', (ctx) => {
     const totalSkins = Object.values(users).reduce((sum, u) => sum + (u.inventory?.length || 0), 0);
     const avgBalance = totalUsers > 0 ? Math.floor(totalBalance / totalUsers) : 0;
     const usersWithRef = Object.values(users).filter(u => u.referrals?.length > 0).length;
+    const blockedUsers = Object.values(users).filter(u => u.unsubExpired).length;
     
     ctx.reply(
         `📊 DETAILED STATS\n` +
@@ -645,7 +828,8 @@ bot.command('stats', (ctx) => {
         `📊 Avg Balance: ${avgBalance.toLocaleString()}\n` +
         `🎁 Total Skins: ${totalSkins}\n` +
         `🤝 Users with referrals: ${usersWithRef}\n` +
-        `⏳ Pending withdraws: ${Object.keys(pendingWithdraws).length}`
+        `⏳ Pending withdraws: ${Object.keys(pendingWithdraws).length}\n` +
+        `🚫 Blocked users: ${blockedUsers}`
     );
 });
 
