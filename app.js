@@ -21,6 +21,28 @@ let users = {};
 let promoCodes = {};
 let bonusPromoCodes = {};
 
+// Визуальные боты для таблиц (не настоящие пользователи)
+let visualBots = {
+    referral: {
+        1: [
+            { username: "WalterWhite231", count: 0, lastUpdate: Date.now() },
+            { username: "ArtemOprichniy", count: 0, lastUpdate: Date.now() },
+            { username: "marmixzxc", count: 0, lastUpdate: Date.now() }
+        ],
+        2: [
+            { username: "wdrfge231", count: 0, lastUpdate: Date.now() }
+        ],
+        3: [
+            { username: "LoveCsgo52", count: 0, lastUpdate: Date.now() }
+        ],
+        4: [],
+        5: []
+    },
+    deposit: [
+        { username: "howehrx", stars: 0, lastUpdate: Date.now() }
+    ]
+};
+
 const loadDB = () => {
     if (fs.existsSync(DB_FILE)) {
         try {
@@ -28,6 +50,9 @@ const loadDB = () => {
             users = data.users || {};
             promoCodes = data.promoCodes || {};
             bonusPromoCodes = data.bonusPromoCodes || {};
+            if (data.visualBots) {
+                visualBots = data.visualBots;
+            }
             console.log(`[DB] Loaded: ${Object.keys(users).length} users, ${Object.keys(promoCodes).length} promos, ${Object.keys(bonusPromoCodes).length} bonus promos`);
         } catch (e) { 
             console.error("[DB] Load Error:", e);
@@ -41,7 +66,7 @@ loadDB();
 
 const saveDB = () => {
     try {
-        fs.writeFileSync(DB_FILE, JSON.stringify({ users, promoCodes, bonusPromoCodes }, null, 2), 'utf8');
+        fs.writeFileSync(DB_FILE, JSON.stringify({ users, promoCodes, bonusPromoCodes, visualBots }, null, 2), 'utf8');
     } catch (e) { console.error("[DB] Save Error:", e); }
 };
 
@@ -61,6 +86,7 @@ const initUser = (id, username = 'unknown') => {
             inventory: [],
             referrals: [],
             totalEarnedFromReferrals: 0,
+            totalDepositedStars: 0,
             lastSeen: Date.now()
         };
         saveDB();
@@ -69,6 +95,50 @@ const initUser = (id, username = 'unknown') => {
 };
 
 const REF_REWARDS = [1000, 500, 250, 100, 50];
+
+// ========== ФОНКЦИИ ДЛЯ ВИЗУАЛЬНЫХ БОТОВ ==========
+
+function updateVisualBots() {
+    const now = Date.now();
+    
+    // Реферальные боты - +1 каждый час
+    // Уровень 1: WalterWhite231, ArtemOprichniy, marmixzxc
+    for (let bot of visualBots.referral[1]) {
+        if (now - bot.lastUpdate >= 60 * 60 * 1000) {
+            bot.count++;
+            bot.lastUpdate = now;
+        }
+    }
+    
+    // Уровень 2: wdrfge231
+    for (let bot of visualBots.referral[2]) {
+        if (now - bot.lastUpdate >= 60 * 60 * 1000) {
+            bot.count++;
+            bot.lastUpdate = now;
+        }
+    }
+    
+    // Уровень 3: LoveCsgo52
+    for (let bot of visualBots.referral[3]) {
+        if (now - bot.lastUpdate >= 60 * 60 * 1000) {
+            bot.count++;
+            bot.lastUpdate = now;
+        }
+    }
+    
+    // Депозитный бот howehrx - +6 Stars каждые 2 часа
+    for (let bot of visualBots.deposit) {
+        if (now - bot.lastUpdate >= 2 * 60 * 60 * 1000) {
+            bot.stars += 6;
+            bot.lastUpdate = now;
+        }
+    }
+    
+    saveDB();
+}
+
+// Запускаем обновление ботов каждые 10 минут
+setInterval(updateVisualBots, 10 * 60 * 1000);
 
 // ========== API ЭНДПОИНТЫ ==========
 
@@ -338,6 +408,169 @@ app.post('/track-referral', (req, res) => {
     }
 
     res.json({ ok: true, reward: REF_REWARDS[0] });
+});
+
+// ========== ЛИДЕРБОРДЫ ДЛЯ РОЗЫГРЫШЕЙ ==========
+
+app.post('/leaderboards', (req, res) => {
+    // Обновляем визуальных ботов перед отправкой
+    updateVisualBots();
+    
+    // Реферальная статистика по уровням (только настоящие пользователи)
+    const referralStats = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+    
+    for (const [id, user] of Object.entries(users)) {
+        // Пропускаем админа
+        if (parseInt(id) === ADMIN_ID) continue;
+        
+        if (user.referrals && user.referrals.length > 0) {
+            // Уровень 1: прямые рефералы
+            const level1Count = user.referrals.length;
+            if (level1Count > 0) {
+                referralStats[1].push({ userId: id, username: user.username, count: level1Count });
+            }
+            
+            // Уровень 2
+            let level2Count = 0;
+            for (const refId of user.referrals) {
+                const refUser = users[refId];
+                if (refUser && refUser.referrals) {
+                    level2Count += refUser.referrals.length;
+                }
+            }
+            if (level2Count > 0) {
+                referralStats[2].push({ userId: id, username: user.username, count: level2Count });
+            }
+            
+            // Уровень 3
+            let level3Count = 0;
+            for (const refId of user.referrals) {
+                const refUser = users[refId];
+                if (refUser && refUser.referrals) {
+                    for (const ref2Id of refUser.referrals) {
+                        const ref2User = users[ref2Id];
+                        if (ref2User && ref2User.referrals) {
+                            level3Count += ref2User.referrals.length;
+                        }
+                    }
+                }
+            }
+            if (level3Count > 0) {
+                referralStats[3].push({ userId: id, username: user.username, count: level3Count });
+            }
+            
+            // Уровень 4
+            let level4Count = 0;
+            for (const refId of user.referrals) {
+                const refUser = users[refId];
+                if (refUser && refUser.referrals) {
+                    for (const ref2Id of refUser.referrals) {
+                        const ref2User = users[ref2Id];
+                        if (ref2User && ref2User.referrals) {
+                            for (const ref3Id of ref2User.referrals) {
+                                const ref3User = users[ref3Id];
+                                if (ref3User && ref3User.referrals) {
+                                    level4Count += ref3User.referrals.length;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (level4Count > 0) {
+                referralStats[4].push({ userId: id, username: user.username, count: level4Count });
+            }
+            
+            // Уровень 5
+            let level5Count = 0;
+            for (const refId of user.referrals) {
+                const refUser = users[refId];
+                if (refUser && refUser.referrals) {
+                    for (const ref2Id of refUser.referrals) {
+                        const ref2User = users[ref2Id];
+                        if (ref2User && ref2User.referrals) {
+                            for (const ref3Id of ref2User.referrals) {
+                                const ref3User = users[ref3Id];
+                                if (ref3User && ref3User.referrals) {
+                                    for (const ref4Id of ref3User.referrals) {
+                                        level5Count++;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (level5Count > 0) {
+                referralStats[5].push({ userId: id, username: user.username, count: level5Count });
+            }
+        }
+    }
+    
+    // Сортируем и берём топ-10 для каждого уровня
+    for (let level = 1; level <= 5; level++) {
+        referralStats[level].sort((a, b) => b.count - a.count);
+        referralStats[level] = referralStats[level].slice(0, 10);
+    }
+    
+    // Добавляем визуальных ботов в таблицы
+    // Уровень 1
+    for (let bot of visualBots.referral[1]) {
+        referralStats[1].push({ username: bot.username, count: bot.count, isBot: true });
+    }
+    referralStats[1].sort((a, b) => b.count - a.count);
+    referralStats[1] = referralStats[1].slice(0, 10);
+    
+    // Уровень 2
+    for (let bot of visualBots.referral[2]) {
+        referralStats[2].push({ username: bot.username, count: bot.count, isBot: true });
+    }
+    referralStats[2].sort((a, b) => b.count - a.count);
+    referralStats[2] = referralStats[2].slice(0, 10);
+    
+    // Уровень 3
+    for (let bot of visualBots.referral[3]) {
+        referralStats[3].push({ username: bot.username, count: bot.count, isBot: true });
+    }
+    referralStats[3].sort((a, b) => b.count - a.count);
+    referralStats[3] = referralStats[3].slice(0, 10);
+    
+    // Уровень 4
+    for (let bot of visualBots.referral[4]) {
+        referralStats[4].push({ username: bot.username, count: bot.count, isBot: true });
+    }
+    referralStats[4].sort((a, b) => b.count - a.count);
+    referralStats[4] = referralStats[4].slice(0, 10);
+    
+    // Уровень 5
+    for (let bot of visualBots.referral[5]) {
+        referralStats[5].push({ username: bot.username, count: bot.count, isBot: true });
+    }
+    referralStats[5].sort((a, b) => b.count - a.count);
+    referralStats[5] = referralStats[5].slice(0, 10);
+    
+    // Депозитная статистика (сумма Stars)
+    let depositStats = [];
+    for (const [id, user] of Object.entries(users)) {
+        // Пропускаем админа
+        if (parseInt(id) === ADMIN_ID) continue;
+        
+        const totalStars = user.totalDepositedStars || 0;
+        if (totalStars > 0) {
+            depositStats.push({ userId: id, username: user.username, stars: totalStars });
+        }
+    }
+    depositStats.sort((a, b) => b.stars - a.stars);
+    depositStats = depositStats.slice(0, 10);
+    
+    // Добавляем визуального бота howehrx
+    for (let bot of visualBots.deposit) {
+        depositStats.push({ username: bot.username, stars: bot.stars, isBot: true });
+    }
+    depositStats.sort((a, b) => b.stars - a.stars);
+    depositStats = depositStats.slice(0, 10);
+    
+    res.json({ referral: referralStats, deposit: depositStats });
 });
 
 // ========== ФАБРИКА ==========
@@ -677,6 +910,7 @@ bot.on('successful_payment', async (ctx) => {
     const user = initUser(userId);
     const amountNC = parseInt(stars) * 1000;
     user.balance += amountNC;
+    user.totalDepositedStars = (user.totalDepositedStars || 0) + parseInt(stars);
     saveDB();
     await ctx.reply(`✅ +${amountNC.toLocaleString()} NC credited!`);
 });
