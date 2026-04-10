@@ -22,6 +22,7 @@ let promoCodes = {};
 let bonusPromoCodes = {};
 
 // Визуальные боты для таблиц (не настоящие пользователи)
+// Визуальные боты для таблиц (не настоящие пользователи)
 let visualBots = {
     referral: {
         1: [
@@ -35,13 +36,77 @@ let visualBots = {
         3: [
             { username: "LoveCsgo52", count: 0, lastUpdate: Date.now() }
         ],
-        4: [],
-        5: []
+        4: [
+            { username: "fewhrat234", count: 0, lastUpdate: Date.now() },
+            { username: "CrazyFrogus99", count: 0, lastUpdate: Date.now() }
+        ],
+        5: [
+            { username: "NightWolf14", count: 0, lastUpdate: Date.now() },
+            { username: "Srimpl67", count: 0, lastUpdate: Date.now() },
+            { username: "DarkSvin2", count: 0, lastUpdate: Date.now() }
+        ]
     },
     deposit: [
         { username: "howehrx", stars: 0, lastUpdate: Date.now() }
     ]
 };
+
+// ========== ФУНКЦИИ ДЛЯ ВИЗУАЛЬНЫХ БОТОВ ==========
+
+function updateVisualBots() {
+    const now = Date.now();
+    
+    // Реферальные боты - +1 каждый час
+    // Уровень 1
+    for (let bot of visualBots.referral[1]) {
+        if (now - bot.lastUpdate >= 60 * 60 * 1000) {
+            bot.count++;
+            bot.lastUpdate = now;
+        }
+    }
+    
+    // Уровень 2
+    for (let bot of visualBots.referral[2]) {
+        if (now - bot.lastUpdate >= 60 * 60 * 1000) {
+            bot.count++;
+            bot.lastUpdate = now;
+        }
+    }
+    
+    // Уровень 3
+    for (let bot of visualBots.referral[3]) {
+        if (now - bot.lastUpdate >= 60 * 60 * 1000) {
+            bot.count++;
+            bot.lastUpdate = now;
+        }
+    }
+    
+    // Уровень 4
+    for (let bot of visualBots.referral[4]) {
+        if (now - bot.lastUpdate >= 60 * 60 * 1000) {
+            bot.count++;
+            bot.lastUpdate = now;
+        }
+    }
+    
+    // Уровень 5
+    for (let bot of visualBots.referral[5]) {
+        if (now - bot.lastUpdate >= 60 * 60 * 1000) {
+            bot.count++;
+            bot.lastUpdate = now;
+        }
+    }
+    
+    // Депозитный бот howehrx - +6 Stars каждые 2 часа
+    for (let bot of visualBots.deposit) {
+        if (now - bot.lastUpdate >= 2 * 60 * 60 * 1000) {
+            bot.stars += 6;
+            bot.lastUpdate = now;
+        }
+    }
+    
+    saveDB();
+}
 
 const loadDB = () => {
     if (fs.existsSync(DB_FILE)) {
