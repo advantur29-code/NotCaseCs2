@@ -47,7 +47,6 @@
         .inventory-card .skin-price { font-size: 10px; color: #ffca28; }
         .factory-badge { font-size: 9px; background: #4caf50; padding: 3px 8px; border-radius: 20px; display: inline-block; margin-top: 5px; }
         .broken-badge { background: #eb4b4b; }
-        .timer-badge { font-size: 9px; background: #ffca28; color: black; padding: 3px 8px; border-radius: 20px; display: inline-block; margin-top: 5px; }
         
         input, select { background: #111; border: 1px solid #444; color: white; padding: 12px; border-radius: 10px; width: 100%; margin: 5px 0; font-size: 14px; }
         
@@ -75,14 +74,41 @@
         .announcement { background: linear-gradient(135deg, #8847ff, #d32ee6); padding: 12px; border-radius: 12px; margin-bottom: 15px; text-align: center; font-size: 12px; cursor: pointer; }
         
         .shop-card { background: #1a1a1a; padding: 20px; border-radius: 16px; text-align: center; border: 1px solid #333; }
-        .bonus-input-group { display: flex; gap: 10px; margin-top: 15px; }
-        .bonus-input-group input { flex: 2; margin: 0; }
-        .bonus-input-group button { flex: 1; margin: 0; background: #8847ff; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .active-bonus { background: #4caf50; padding: 10px; border-radius: 10px; margin-top: 10px; font-size: 12px; display: none; }
-        
         .promo-code-row { display: flex; gap: 10px; margin-top: 15px; }
         .promo-code-row input { flex: 2; margin: 0; }
         .promo-code-row button { flex: 1; margin: 0; background: #ffca28; color: black; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        
+        /* Стили для розыгрышей */
+        .contest-header { text-align: center; margin-bottom: 20px; }
+        .contest-header h2 { color: #ffca28; margin-bottom: 5px; }
+        .contest-deadline { background: #eb4b4b; display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; margin-top: 10px; }
+        
+        .contest-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .contest-tab { flex: 1; background: #222; border: none; color: white; padding: 12px; border-radius: 12px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .contest-tab.active { background: #ffca28; color: black; font-weight: bold; }
+        
+        .contest-content { display: none; }
+        .contest-content.active { display: block; }
+        
+        .contest-info { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 15px; font-size: 13px; }
+        .contest-info p { margin: 5px 0; }
+        
+        .level-buttons { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        .level-btn { flex: 1; background: #222; border: none; color: white; padding: 10px; border-radius: 10px; cursor: pointer; font-size: 12px; transition: 0.2s; text-align: center; }
+        .level-btn.active { background: #8847ff; color: white; }
+        .level-btn small { font-size: 10px; color: #ffca28; }
+        
+        .prize-info { background: linear-gradient(135deg, #8847ff, #d32ee6); padding: 12px; border-radius: 12px; text-align: center; margin-bottom: 15px; font-size: 13px; }
+        
+        .leaderboard { background: #1a1a1a; border-radius: 12px; overflow: hidden; }
+        .leaderboard-header { display: grid; grid-template-columns: 50px 1fr 100px; background: #333; padding: 10px; font-weight: bold; font-size: 13px; }
+        .leaderboard-row { display: grid; grid-template-columns: 50px 1fr 100px; padding: 10px; border-bottom: 1px solid #222; font-size: 13px; }
+        .leaderboard-row.top1 { background: linear-gradient(90deg, #ffd70020, transparent); color: #ffd700; }
+        .leaderboard-row.top2 { background: linear-gradient(90deg, #c0c0c020, transparent); color: #c0c0c0; }
+        .leaderboard-row.top3 { background: linear-gradient(90deg, #cd7f3220, transparent); color: #cd7f32; }
+        .leaderboard-row.bot-row { opacity: 0.8; }
+        
+        .last-update { text-align: center; font-size: 11px; color: #888; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -214,29 +240,86 @@
         
         <input type="number" id="starsIn" value="10" oninput="calcNC()" style="width:120px; text-align:center; display:inline-block;"> ⭐ = <span id="ncOut" style="color:gold; font-weight:bold">10,000</span> NC
         
-        <div class="active-bonus" id="activeBonusInfo"></div>
-        
-        <div class="promo-code-row">
-            <input type="text" id="bonusCode" placeholder="Bonus code (10% / 25% / 50%)">
-            <button onclick="applyBonusPromo()">🎁 ACTIVATE</button>
-        </div>
-        
-        <button class="btn-main" onclick="topUp()" style="margin-top:15px;">💎 DEPOSIT WITH STARS</button>
+        <button class="btn-main" onclick="topUp()" style="margin-top:15px;">💎 ПОПОЛНИТЬ ЧЕРЕЗ STARS</button>
         
         <div style="margin-top:20px; padding-top:15px; border-top:1px solid #333;">
-            <label>🎟️ Promo code for coins</label>
+            <label>🎟️ Промокод на монеты</label>
             <div class="promo-code-row">
-                <input type="text" id="promoCode" placeholder="Promo code">
-                <button onclick="applyPromo()">Activate</button>
+                <input type="text" id="promoCode" placeholder="Промокод">
+                <button onclick="applyPromo()">Активировать</button>
             </div>
         </div>
     </div>
 </div>
 
+<div id="page-contests" class="page">
+    <div class="contest-header">
+        <h2>🏆 РОЗЫГРЫШИ</h2>
+        <p>Соревнуйтесь с другими игроками и выигрывайте крутые призы!</p>
+        <div class="contest-deadline">⏰ Окончание розыгрышей: <b>27 мая 2026 г.</b></div>
+    </div>
+
+    <div class="contest-tabs">
+        <button class="contest-tab active" onclick="showContestTab('referral')">👥 РЕФЕРАЛЫ</button>
+        <button class="contest-tab" onclick="showContestTab('deposit')">💎 ДЕПОЗИТЫ (Stars)</button>
+    </div>
+
+    <div id="referralContest" class="contest-content active">
+        <div class="contest-info">
+            <p>🎁 <b>Как участвовать:</b> Приглашайте друзей по своей реферальной ссылке. Чем больше приглашений, тем выше шанс на победу!</p>
+            <p>🏆 <b>Призы:</b> Отдельные призы для каждого уровня реферальной системы!</p>
+        </div>
+
+        <div class="level-buttons">
+            <button class="level-btn active" onclick="showReferralLevel(1)">Уровень 1<br><small>1000 NC</small></button>
+            <button class="level-btn" onclick="showReferralLevel(2)">Уровень 2<br><small>500 NC</small></button>
+            <button class="level-btn" onclick="showReferralLevel(3)">Уровень 3<br><small>250 NC</small></button>
+            <button class="level-btn" onclick="showReferralLevel(4)">Уровень 4<br><small>100 NC</small></button>
+            <button class="level-btn" onclick="showReferralLevel(5)">Уровень 5<br><small>50 NC</small></button>
+        </div>
+
+        <div class="prize-info" id="referralPrize">
+            🏆 <b>Приз за 1 место:</b> 5,000,000 NC + 🔪 Legendary Knife
+        </div>
+
+        <div class="leaderboard" id="referralLeaderboard">
+            <div class="leaderboard-header">
+                <span>#</span>
+                <span>Игрок</span>
+                <span>Кол-во</span>
+            </div>
+            <div id="referralList">Загрузка...</div>
+        </div>
+        <div class="last-update" id="referralUpdateTime">Обновляется каждую минуту...</div>
+    </div>
+
+    <div id="depositContest" class="contest-content">
+        <div class="contest-info">
+            <p>🎁 <b>Как участвовать:</b> Пополняйте баланс через Stars. 1 Star = 1 очко. Чем больше депозит, тем выше шанс!</p>
+            <p>🏆 <b>Приз:</b> 15,000,000 NC + 👑 Karambit Emerald</p>
+        </div>
+
+        <div class="prize-info">
+            🏆 <b>Приз за 1 место:</b> 15,000,000 NC + 🔪 Karambit | Emerald
+        </div>
+
+        <div class="leaderboard" id="depositLeaderboard">
+            <div class="leaderboard-header">
+                <span>#</span>
+                <span>Игрок</span>
+                <span>Stars</span>
+            </div>
+            <div id="depositList">Загрузка...</div>
+        </div>
+        <div class="last-update" id="depositUpdateTime">Обновляется каждую минуту...</div>
+    </div>
+</div>
+
 <nav class="nav">
-    <div id="nav-cases" class="nav-item active" onclick="nav('cases')"><span>🎲</span>Cases</div>
-    <div id="nav-profile" class="nav-item" onclick="nav('profile')"><span>👤</span>Profile</div>
-    <div id="nav-shop" class="nav-item" onclick="nav('shop')"><span>💰</span>Shop</div>
+    <div id="nav-cases" class="nav-item active" onclick="nav('cases')"><span>🎲</span>Кейсы</div>
+    <div id="nav-profile" class="nav-item" onclick="nav('profile')"><span>👤</span>Профиль</div>
+    <div id="nav-shop" class="nav-item" onclick="nav('shop')"><span>💰</span>Магазин</div>
+    <div id="nav-contests" class="nav-item" onclick="nav('contests')"><span>🏆</span>Розыгрыши</div>
 </nav>
 
 <script>
@@ -248,11 +331,10 @@
     let currentFactorySkinId = null;
     let currentActionSkin = null;
     let factoryTimerInterval = null;
-    let activeBonusPercent = 0;
-    let activeBonusCode = null;
+    let currentReferralLevel = 1;
 
     const skins = {
-        empty: { name: "❌ Nothing", color: "gray", img: "not.png", price: 0 },
+        empty: { name: "❌ Ничего", color: "gray", img: "not.png", price: 0 },
         skin_ak: { name: "AK-47 | Redline", color: "blue", img: "ak.png", price: 25000 },
         skin_awp: { name: "AWP | Dragon Lore", color: "blue", img: "awp.png", price: 30000 },
         skin_m4a4: { name: "M4A4 | Howl", color: "blue", img: "m4a4.png", price: 22000 },
@@ -283,11 +365,11 @@
     };
 
     const caseConfig = {
-        bomj: { title: "🚽 Bomj Case", price: 2000, drop: [skins.skin_ak, skins.skin_awp], emptyChance: 99, forceEmpty: true },
-        normal: { title: "📦 Normal Case", price: 50000, drop: [skins.skin_ak, skins.skin_awp, skins.skin_m4a4, skins.skin_usp, skins.skin_glock, skins.skin_deagle, skins.skin_m249, skins.skin_mac10, skins.skin_mag7, skins.skin_mp5, skins.skin_mp7, skins.skin_mp9, skins.skin_negev, skins.skin_nova, skins.skin_p2000, skins.skin_sawed], emptyChance: 50 },
-        advanced: { title: "⚡ Advanced Case", price: 200000, drop: [skins.skin_aug, skins.skin_famas, skins.skin_galil, skins.skin_m4a4s, skins.skin_sg, skins.skin_ssg, skins.knife5], emptyChance: 50 },
-        premium: { title: "💎 Premium Case", price: 1000000, drop: [skins.knife1, skins.knife2, skins.skin_ak, skins.skin_awp, skins.skin_m4a4s, skins.skin_aug], emptyChance: 50 },
-        millionaire: { title: "👑 Millionaire Case", price: 5000000, drop: [skins.knife1, skins.knife2, skins.knife3, skins.knife4, skins.knife5], emptyChance: 0 }
+        bomj: { title: "🚽 Бомж-Кейс", price: 2000, drop: [skins.skin_ak, skins.skin_awp], emptyChance: 99, forceEmpty: true },
+        normal: { title: "📦 Обычный Кейс", price: 50000, drop: [skins.skin_ak, skins.skin_awp, skins.skin_m4a4, skins.skin_usp, skins.skin_glock, skins.skin_deagle, skins.skin_m249, skins.skin_mac10, skins.skin_mag7, skins.skin_mp5, skins.skin_mp7, skins.skin_mp9, skins.skin_negev, skins.skin_nova, skins.skin_p2000, skins.skin_sawed], emptyChance: 50 },
+        advanced: { title: "⚡ Продвинутый Кейс", price: 200000, drop: [skins.skin_aug, skins.skin_famas, skins.skin_galil, skins.skin_m4a4s, skins.skin_sg, skins.skin_ssg, skins.knife5], emptyChance: 50 },
+        premium: { title: "💎 Премиум Кейс", price: 1000000, drop: [skins.knife1, skins.knife2, skins.skin_ak, skins.skin_awp, skins.skin_m4a4s, skins.skin_aug], emptyChance: 50 },
+        millionaire: { title: "👑 Кейс Миллионера", price: 5000000, drop: [skins.knife1, skins.knife2, skins.knife3, skins.knife4, skins.knife5], emptyChance: 0 }
     };
 
     function getRandomSkinFromCase(caseType) {
@@ -351,18 +433,18 @@
         const reward = streak <= 10 ? 1000 + (streak - 1) * 250 : 3500;
         const percent = Math.min((streak / 10) * 100, 100);
         document.getElementById('streakFill').style.width = percent + '%';
-        document.getElementById('streakFill').innerHTML = `🔥 Day ${streak} | ${reward} NC`;
+        document.getElementById('streakFill').innerHTML = `🔥 День ${streak} | ${reward} NC`;
     }
 
     async function doTask(taskId, link) {
         tg.openTelegramLink(link);
         
         tg.showPopup({
-            title: "Subscription Check",
-            message: "After subscribing, press 'Check'",
+            title: "Проверка подписки",
+            message: "После подписки нажмите 'Проверить'",
             buttons: [
-                { id: "check", type: "default", text: "✅ CHECK" },
-                { id: "cancel", type: "cancel", text: "CANCEL" }
+                { id: "check", type: "default", text: "✅ ПРОВЕРИТЬ" },
+                { id: "cancel", type: "cancel", text: "ОТМЕНА" }
             ]
         }, async (btnId) => {
             if (btnId === "check") {
@@ -383,13 +465,13 @@
                     });
                     const data = await res.json();
                     if (data.ok) {
-                        tg.showAlert("✅ Task completed!");
+                        tg.showAlert("✅ Задание выполнено!");
                         balance = data.newBalance;
                         updateUI();
                     } else {
-                        tg.showAlert("❌ " + (data.error || "You are not subscribed!"));
+                        tg.showAlert("❌ " + (data.error || "Вы не подписаны!"));
                     }
-                } catch (e) { tg.showAlert("Check error"); }
+                } catch (e) { tg.showAlert("Ошибка проверки"); }
             }
         });
     }
@@ -403,7 +485,7 @@
             });
             const data = await res.json();
             if (data.ok) {
-                tg.showAlert(`🎁 +${data.reward} NC! Streak: ${data.streak} days`);
+                tg.showAlert(`🎁 +${data.reward} NC! Стрик: ${data.streak} дней`);
                 balance = data.newBalance;
                 if (currentUser) {
                     currentUser.streak = data.streak;
@@ -413,9 +495,9 @@
                 updateStreakDisplay();
                 syncWithServer();
             } else {
-                tg.showAlert("⏰ " + (data.error || "Already claimed today"));
+                tg.showAlert("⏰ " + (data.error || "Уже получено сегодня"));
             }
-        } catch (e) { tg.showAlert("Error"); }
+        } catch (e) { tg.showAlert("Ошибка"); }
     }
 
     async function saveTradeLink() {
@@ -425,12 +507,12 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, tradeLink: link })
         });
-        if (res.ok) tg.showAlert("✅ Saved!");
+        if (res.ok) tg.showAlert("✅ Сохранено!");
     }
 
     async function applyPromo() {
         const promo = document.getElementById('promoCode').value;
-        if (!promo) return tg.showAlert("❌ Enter promo code!");
+        if (!promo) return tg.showAlert("❌ Введите промокод!");
         
         const res = await fetch(`${SERVER_URL}/apply-promo`, {
             method: 'POST',
@@ -448,37 +530,6 @@
         }
     }
 
-    async function applyBonusPromo() {
-        const promo = document.getElementById('bonusCode').value;
-        const starsAmount = parseInt(document.getElementById('starsIn').value) || 0;
-        
-        if (!promo) return tg.showAlert("❌ Enter bonus code!");
-        if (starsAmount === 0) {
-            tg.showAlert("❌ Select deposit amount first!");
-            return;
-        }
-        
-        const res = await fetch(`${SERVER_URL}/apply-bonus-promo`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, promo: promo, starsAmount: starsAmount })
-        });
-        const data = await res.json();
-        if (data.ok) {
-            activeBonusPercent = data.bonusPercent;
-            activeBonusCode = promo;
-            tg.showAlert(`✅ Bonus code activated! +${data.bonusPercent}% bonus!`);
-            document.getElementById('activeBonusInfo').innerHTML = `🎁 Active bonus +${data.bonusPercent}% (code: ${promo})`;
-            document.getElementById('activeBonusInfo').style.display = 'block';
-            balance = data.newBalance;
-            updateUI();
-            calcNC();
-            document.getElementById('bonusCode').value = '';
-        } else {
-            tg.showAlert("❌ " + data.error);
-        }
-    }
-
     async function sellSkin(skinId, skinPrice) {
         const res = await fetch(`${SERVER_URL}/remove-skin`, {
             method: 'POST',
@@ -489,16 +540,16 @@
             balance += skinPrice;
             updateUI();
             await updateBalanceOnServer(balance);
-            tg.showAlert(`💰 Sold skin for ${skinPrice.toLocaleString()} NC!`);
+            tg.showAlert(`💰 Вы продали скин за ${skinPrice.toLocaleString()} NC!`);
             syncWithServer();
             closeSkinActions();
-        } else tg.showAlert("❌ Sell error");
+        } else tg.showAlert("❌ Ошибка продажи");
     }
 
     async function withdrawSkin(skinId, skinName) {
         const tradeLink = document.getElementById('tradeLinkInput').value;
         if (!tradeLink) {
-            tg.showAlert("❌ Set trade link first!");
+            tg.showAlert("❌ Сначала укажите трейд-ссылку!");
             return;
         }
         
@@ -509,7 +560,7 @@
         });
         const data = await res.json();
         if (data.ok) {
-            tg.showAlert(`✅ Withdraw request for "${skinName}" sent! Admin will review.`);
+            tg.showAlert(`✅ Заявка на вывод "${skinName}" отправлена! Администратор рассмотрит её.`);
             syncWithServer();
             closeSkinActions();
         } else {
@@ -521,7 +572,7 @@
         const c = caseConfig[type];
         if (!c) return;
         document.getElementById('modalTitle').innerText = c.title;
-        document.getElementById('modalPrice').innerHTML = "💰 Price: " + c.price.toLocaleString() + " NC";
+        document.getElementById('modalPrice').innerHTML = "💰 Цена: " + c.price.toLocaleString() + " NC";
         document.getElementById('modalSpinBtn').onclick = () => startSpin(c.price, type);
         
         const grid = document.getElementById('poolGrid');
@@ -543,7 +594,7 @@
     }
 
     async function startSpin(price, type) {
-        if (balance < price) return tg.showAlert("❌ Not enough NC!");
+        if (balance < price) return tg.showAlert("❌ Мало NC!");
         const btn = document.getElementById('modalSpinBtn');
         btn.disabled = true;
         
@@ -568,15 +619,15 @@
         }, 50);
         
         setTimeout(async () => {
-            if (winSkin.name !== "❌ Nothing") {
+            if (winSkin.name !== "❌ Ничего") {
                 await fetch(`${SERVER_URL}/add-skin`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: tg.initDataUnsafe.user.id, skin: winSkin })
                 });
-                tg.showAlert(`🎉 YOU WON: ${winSkin.name} (${winSkin.price.toLocaleString()} NC)!`);
+                tg.showAlert(`🎉 ВЫ ВЫИГРАЛИ: ${winSkin.name} (${winSkin.price.toLocaleString()} NC)!`);
                 syncWithServer();
-            } else tg.showAlert("😭 Nothing dropped!");
+            } else tg.showAlert("😭 Ничего не выпало!");
             btn.disabled = false;
             closeCase();
         }, 5500);
@@ -592,7 +643,7 @@
         });
         const data = await res.json();
         if (data.ok) {
-            tg.showAlert(`🏭 Factory started! +${data.incomeRate} NC/hour`);
+            tg.showAlert(`🏭 Фабрика запущена! +${data.incomeRate} NC/час`);
             syncWithServer();
         } else tg.showAlert("❌ " + data.error);
         closeSkinActions();
@@ -608,10 +659,10 @@
         const data = await res.json();
         if (data.ok) {
             if (data.deleted) {
-                tg.showAlert(`💰 Collected ${data.earned} NC! Skin broke and disappeared.`);
+                tg.showAlert(`💰 Собрано ${data.earned} NC! Скин сломался и исчез из инвентаря.`);
                 closeFactory();
             } else {
-                tg.showAlert(`💰 Collected ${data.earned} NC!`);
+                tg.showAlert(`💰 Собрано ${data.earned} NC!`);
                 if (data.breakAt) updateFactoryTimer(data.breakAt);
             }
             if (data.newBalance) balance = data.newBalance;
@@ -629,11 +680,11 @@
         });
         const data = await res.json();
         if (data.success) {
-            tg.showAlert(`🚀 SUCCESS! Income x2 (level ${data.level})`);
+            tg.showAlert(`🚀 УСПЕХ! Доход x2 (уровень ${data.level})`);
             if (data.breakAt) updateFactoryTimer(data.breakAt);
             syncWithServer();
         } else if (data.deleted) {
-            tg.showAlert("💥 BOOST FAILED! Skin broke and disappeared");
+            tg.showAlert("💥 РАЗГОН НЕ УДАЛСЯ! Скин сломан и исчез");
             syncWithServer();
             closeFactory();
         } else tg.showAlert("❌ " + data.error);
@@ -648,7 +699,7 @@
             
             if (timeLeft <= 0) {
                 clearInterval(factoryTimerInterval);
-                document.getElementById('factoryTimer').innerHTML = "⏰ SKIN BROKEN!";
+                document.getElementById('factoryTimer').innerHTML = "⏰ СКИН СЛОМАН!";
                 return;
             }
             
@@ -656,7 +707,7 @@
             const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
             
-            document.getElementById('factoryTimer').innerHTML = `⏱ Breaks in: ${hours}h ${minutes}m ${seconds}s`;
+            document.getElementById('factoryTimer').innerHTML = `⏱ Сломается через: ${hours}ч ${minutes}м ${seconds}с`;
         }, 1000);
     }
 
@@ -673,25 +724,25 @@
                 <img src="${skin.img}" onerror="this.src='not.png'">
                 <div class="skin-name">${skin.name}</div>
                 <div class="skin-price">💰 ${skin.price.toLocaleString()}</div>
-                ${skin.factory?.broken ? '<div class="factory-badge broken-badge">💔 Broken</div>' : ''}
+                ${skin.factory?.broken ? '<div class="factory-badge broken-badge">💔 Сломан</div>' : ''}
             </div>
-        `).join('') || "<div style='text-align:center; color:gray'>No items</div>";
+        `).join('') || "<div style='text-align:center; color:gray'>Нет предметов</div>";
         
         factoryDiv.innerHTML = activeFactory.map(skin => `
             <div class="inventory-card" onclick="openFactoryModal('${skin.id}', '${skin.name}', '${skin.img}', ${skin.factory.incomeRate}, ${skin.factory.boostLevel}, ${skin.factory.breakAt})">
                 <img src="${skin.img}" onerror="this.src='not.png'">
                 <div class="skin-name">${skin.name}</div>
-                <div class="skin-price">⚡ ${skin.factory.incomeRate} NC/hour</div>
-                <div class="factory-badge">🏭 Level ${skin.factory.boostLevel}</div>
+                <div class="skin-price">⚡ ${skin.factory.incomeRate} NC/час</div>
+                <div class="factory-badge">🏭 Уровень ${skin.factory.boostLevel}</div>
             </div>
-        `).join('') || "<div style='text-align:center; color:gray'>No active factories</div>";
+        `).join('') || "<div style='text-align:center; color:gray'>Нет активных фабрик</div>";
     }
     
     function openSkinActions(skinId, name, img, price) {
         currentActionSkin = { id: skinId, name, img, price };
         document.getElementById('actionSkinName').innerText = name;
         document.getElementById('actionSkinImg').src = img;
-        document.getElementById('actionSkinPrice').innerHTML = `💰 Value: ${price.toLocaleString()} NC`;
+        document.getElementById('actionSkinPrice').innerHTML = `💰 Стоимость: ${price.toLocaleString()} NC`;
         document.getElementById('sellSkinBtn').onclick = () => sellSkin(skinId, price);
         document.getElementById('factorySkinBtn').onclick = () => startFactory(skinId);
         document.getElementById('withdrawSkinBtn').onclick = () => withdrawSkin(skinId, name);
@@ -707,7 +758,7 @@
         currentFactorySkinId = skinId;
         document.getElementById('factorySkinName').innerText = name;
         document.getElementById('factorySkinImg').src = img;
-        document.getElementById('factoryInfo').innerHTML = `⚡ Income: ${rate} NC/hour<br>📈 Boost level: ${level}`;
+        document.getElementById('factoryInfo').innerHTML = `⚡ Доход: ${rate} NC/час<br>📈 Уровень: ${level}`;
         document.getElementById('collectBtn').onclick = () => collectFactoryIncome();
         document.getElementById('boostBtn').onclick = () => boostFactory();
         document.getElementById('factoryModal').style.display = 'block';
@@ -750,12 +801,6 @@
             tg.openInvoice(data.link, async (status) => { 
                 if (status === 'paid') {
                     await syncWithServer();
-                    if (activeBonusCode) {
-                        tg.showAlert(`🎁 Bonus ${activeBonusPercent}% already added!`);
-                        activeBonusPercent = 0;
-                        activeBonusCode = null;
-                        document.getElementById('activeBonusInfo').style.display = 'none';
-                    }
                 }
             });
         }
@@ -764,20 +809,11 @@
     function setStars(v) { 
         document.getElementById('starsIn').value = v; 
         calcNC();
-        activeBonusPercent = 0;
-        activeBonusCode = null;
-        document.getElementById('activeBonusInfo').style.display = 'none';
     }
     
     function calcNC() { 
         const stars = parseInt(document.getElementById('starsIn').value) || 0;
-        const bonus = activeBonusPercent;
-        const bonusStars = Math.floor(stars * bonus / 100);
-        const totalStars = stars + bonusStars;
-        document.getElementById('ncOut').innerHTML = (totalStars * 1000).toLocaleString();
-        if (bonus > 0) {
-            document.getElementById('ncOut').innerHTML = `${(totalStars * 1000).toLocaleString()} (+${bonusStars * 1000} bonus)`;
-        }
+        document.getElementById('ncOut').innerHTML = (stars * 1000).toLocaleString();
     }
     
     function nav(p) {
@@ -785,16 +821,96 @@
         document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
         document.getElementById('page-' + p).classList.add('active');
         document.getElementById('nav-' + p).classList.add('active');
+        
+        if (p === 'contests') {
+            loadLeaderboards();
+        }
     }
     
     function copyRefLink() {
         const link = document.getElementById('refLink');
         link.select();
         document.execCommand('copy');
-        tg.showAlert("🔗 Link copied!");
+        tg.showAlert("🔗 Ссылка скопирована!");
+    }
+    
+    // ========== ФУНКЦИИ ДЛЯ РОЗЫГРЫШЕЙ ==========
+    
+    async function loadLeaderboards() {
+        try {
+            const res = await fetch(`${SERVER_URL}/leaderboards`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (data.referral && data.referral[currentReferralLevel]) {
+                const list = data.referral[currentReferralLevel];
+                const container = document.getElementById('referralList');
+                if (container) {
+                    container.innerHTML = list.map((user, i) => `
+                        <div class="leaderboard-row ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}">
+                            <span>${i + 1}</span>
+                            <span>${user.username} ${user.isBot ? '🤖' : ''}</span>
+                            <span>${user.count.toLocaleString()}</span>
+                        </div>
+                    `).join('') || '<div style="text-align:center; padding:20px;">Нет участников</div>';
+                }
+                document.getElementById('referralUpdateTime').innerHTML = `🔄 Обновлено: ${new Date().toLocaleTimeString()}`;
+            }
+            
+            if (data.deposit) {
+                const list = data.deposit;
+                const container = document.getElementById('depositList');
+                if (container) {
+                    container.innerHTML = list.map((user, i) => `
+                        <div class="leaderboard-row ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}">
+                            <span>${i + 1}</span>
+                            <span>${user.username} ${user.isBot ? '🤖' : ''}</span>
+                            <span>⭐ ${user.stars.toLocaleString()}</span>
+                        </div>
+                    `).join('') || '<div style="text-align:center; padding:20px;">Нет участников</div>';
+                }
+                document.getElementById('depositUpdateTime').innerHTML = `🔄 Обновлено: ${new Date().toLocaleTimeString()}`;
+            }
+        } catch(e) { console.error('Leaderboard error:', e); }
+    }
+    
+    function showContestTab(tab) {
+        document.querySelectorAll('.contest-tab').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.contest-content').forEach(content => content.classList.remove('active'));
+        
+        if (tab === 'referral') {
+            document.querySelector('.contest-tab:first-child').classList.add('active');
+            document.getElementById('referralContest').classList.add('active');
+        } else {
+            document.querySelector('.contest-tab:last-child').classList.add('active');
+            document.getElementById('depositContest').classList.add('active');
+        }
+        loadLeaderboards();
+    }
+    
+    function showReferralLevel(level) {
+        currentReferralLevel = level;
+        document.querySelectorAll('.level-btn').forEach((btn, i) => {
+            if (i + 1 === level) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+        
+        const prizes = {
+            1: '5,000,000 NC + 🔪 Legendary Knife',
+            2: '2,500,000 NC + 🔥 M9 Bayonet',
+            3: '1,000,000 NC + ⭐ AK-47 Fire Serpent',
+            4: '500,000 NC + 💎 AWP Dragon Lore',
+            5: '250,000 NC + 🎯 USP-S Kill Confirmed'
+        };
+        document.getElementById('referralPrize').innerHTML = `🏆 <b>Приз за 1 место (Уровень ${level}):</b> ${prizes[level]}`;
+        loadLeaderboards();
     }
     
     setInterval(updateOnlineCount, 30000);
+    setInterval(() => {
+        if (document.getElementById('page-contests').classList.contains('active')) {
+            loadLeaderboards();
+        }
+    }, 60000);
     
     if (tg.initDataUnsafe?.user) {
         const u = tg.initDataUnsafe.user;
