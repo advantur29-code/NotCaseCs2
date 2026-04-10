@@ -837,41 +837,42 @@
     // ========== ФУНКЦИИ ДЛЯ РОЗЫГРЫШЕЙ ==========
     
     async function loadLeaderboards() {
-    try {
-        const res = await fetch(`${SERVER_URL}/leaderboards`, { method: 'POST' });
-        const data = await res.json();
-        
-        if (data.referral && data.referral[currentReferralLevel]) {
-            const list = data.referral[currentReferralLevel];
-            const container = document.getElementById('referralList');
-            if (container) {
-                container.innerHTML = list.map((user, i) => `
-                    <div class="leaderboard-row ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}">
-                        <span>${i + 1}</span>
-                        <span>${user.username}</span>
-                        <span>${user.count.toLocaleString()}</span>
-                    </div>
-                `).join('') || '<div style="text-align:center; padding:20px;">Нет участников</div>';
+        try {
+            const res = await fetch(`${SERVER_URL}/leaderboards`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (data.referral && data.referral[currentReferralLevel]) {
+                const list = data.referral[currentReferralLevel];
+                const container = document.getElementById('referralList');
+                if (container) {
+                    container.innerHTML = list.map((user, i) => `
+                        <div class="leaderboard-row ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}">
+                            <span>${i + 1}</span>
+                            <span>${user.username}</span>
+                            <span>${user.count.toLocaleString()}</span>
+                        </div>
+                    `).join('') || '<div style="text-align:center; padding:20px;">Нет участников</div>';
+                }
+                document.getElementById('referralUpdateTime').innerHTML = `🔄 Обновлено: ${new Date().toLocaleTimeString()}`;
             }
-            document.getElementById('referralUpdateTime').innerHTML = `🔄 Обновлено: ${new Date().toLocaleTimeString()}`;
-        }
-        
-        if (data.deposit) {
-            const list = data.deposit;
-            const container = document.getElementById('depositList');
-            if (container) {
-                container.innerHTML = list.map((user, i) => `
-                    <div class="leaderboard-row ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}">
-                        <span>${i + 1}</span>
-                        <span>${user.username}</span>
-                        <span>⭐ ${user.stars.toLocaleString()}</span>
-                    </div>
-                `).join('') || '<div style="text-align:center; padding:20px;">Нет участников</div>';
+            
+            if (data.deposit) {
+                const list = data.deposit;
+                const container = document.getElementById('depositList');
+                if (container) {
+                    container.innerHTML = list.map((user, i) => `
+                        <div class="leaderboard-row ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}">
+                            <span>${i + 1}</span>
+                            <span>${user.username}</span>
+                            <span>⭐ ${user.stars.toLocaleString()}</span>
+                        </div>
+                    `).join('') || '<div style="text-align:center; padding:20px;">Нет участников</div>';
+                }
+                document.getElementById('depositUpdateTime').innerHTML = `🔄 Обновлено: ${new Date().toLocaleTimeString()}`;
             }
-            document.getElementById('depositUpdateTime').innerHTML = `🔄 Обновлено: ${new Date().toLocaleTimeString()}`;
-        }
-    } catch(e) { console.error('Leaderboard error:', e); }
-}
+        } catch(e) { console.error('Leaderboard error:', e); }
+    }
+    
     function showContestTab(tab) {
         document.querySelectorAll('.contest-tab').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.contest-content').forEach(content => content.classList.remove('active'));
